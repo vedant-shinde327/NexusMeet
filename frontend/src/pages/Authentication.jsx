@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
+import AuthContext from "../contexts/AuthContext.jsx";
 import "./Login.css";
 
 export default function Authentication() {
@@ -10,11 +11,61 @@ export default function Authentication() {
   const [error, setError] = useState();
   const [messages, setMessages] = useState();
 
-  const [formState, setFormState] = useState();
+  const [formState, setFormState] = useState(0);
   const [open, setOpen] = useState();
 
+  const { handleRegister, handleLogin } = useContext(AuthContext);
+
+  let handleAuth = async () => {
+    try {
+      setError("");
+      setMessages("");
+
+      if (formState === 0) {
+        let result = await handleLogin(username, password);
+
+        console.log(result);
+
+        setMessages("signed in succefully!");
+        setOpen(true);
+
+        setTimeout(() => {
+          setOpen(false);
+        }, 2500);
+        
+      }   
+
+      if (formState === 1) {
+        let result = await handleRegister(name, username, password);
+
+        console.log(result);
+
+        setUsername("");
+        setMessages(result);
+        setOpen(true);
+        setError("");
+        setFormState(0);
+        setPassword("");
+        setName("");
+      }
+    } catch (err) {
+      const message = err.response?.data?.message || "Something went wrong";
+
+      setError(message);
+      setOpen(false);
+    }
+  };
+
   return (
-    <div className="login-page">
+    <>
+      {open && (
+        <div className="success-popup">
+          <span>✓</span>
+          Signed in successfully!
+        </div>
+      )}
+
+      <div className="login-page">
       {/* ── Left ── */}
       <div className="login-left">
         <div className="login-logo">
@@ -89,22 +140,32 @@ export default function Authentication() {
                 className="login-input"
                 type="text"
                 placeholder="Full Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
               />
             ) : (
               <></>
             )}
-                                                                                                                                    
+
             <input
               className="login-input"
               type="username"
               placeholder="username"
+              name="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
             />
+
             <div className="login-input-wrap">
               <input
                 className="login-input login-input-password"
                 type={show ? "text" : "password"}
                 placeholder="Password"
+                name="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
+
               <button className="login-eye-btn" onClick={() => setShow(!show)}>
                 {show ? (
                   <svg
@@ -136,28 +197,37 @@ export default function Authentication() {
             </div>
           </div>
 
+          {/* ERROR */}
+          {error && <p style={{ color: "red" }}>{error}</p>}
+
+          {/* SUCCESS */}
+          {messages && <p style={{ color: "green" }}>{messages}</p>}
+
           <button
+            type="button"
             className="login-submit-btn "
-            onClick={() => {
-              setFormState(0);
-            }}
+            onClick={handleAuth}
           >
-            Sign in
+            {formState === 0 ? "Sign in" : "Create account"}
           </button>
 
           <p className="login-signup-text">
-            No account?{" "}
+            {formState === 0 ? "No account?" : "Already have an account?"}{" "}
             <button
+              type="button"
               className="login-signup-link"
               onClick={() => {
-                setFormState(1);
+                setFormState(formState === 0 ? 1 : 0);
+                setError("");
+                setMessages("");
               }}
             >
-              Sign up free
+              {formState === 0 ? "Sign up free" : "Sign in"}
             </button>
           </p>
         </div>
       </div>
     </div>
+    </>
   );
 }
