@@ -14,7 +14,12 @@ const connectToSocket = (server) => {
     }
   });
 
+  console.log("socket.IO initialized");
+
   io.on( "connection", (socket) => {
+    
+    console.log("something connected: ", socket.id);
+
     socket.on("join-call", (path) => {
       if (connections[path] === undefined) {
         connections[path] = [];
