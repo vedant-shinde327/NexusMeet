@@ -1,80 +1,329 @@
 .meetRoom {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  background-color: #332626;
+
+  width: 100%;
   min-height: 100vh;
+
   padding: 16px;
+  padding-bottom: 100px;
+
   box-sizing: border-box;
+  background-color: #332626;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  transition: padding-right 0.3s ease;
 }
+
+/* =========================
+   MAIN VIDEO
+========================= */
 
 .mainVideoWrapper {
   position: relative;
-  width: 100%;
-  max-width: 900px;
+
+  width: min(100%, 900px);
   aspect-ratio: 16 / 9;
+
   border-radius: 12px;
   overflow: hidden;
+
   background-color: #1a1a1a;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+
+  transition:
+    width 0.3s ease,
+    max-width 0.3s ease,
+    transform 0.3s ease;
 }
 
 .mainVideo {
   width: 100%;
   height: 100%;
+
   object-fit: cover;
   display: block;
 }
 
+/* =========================
+   REMOTE PARTICIPANTS
+========================= */
+
 .remoteStrip {
   display: flex;
+
   flex-direction: row;
   flex-wrap: wrap;
+
   gap: 12px;
   justify-content: center;
+  align-items: center;
+
   width: 100%;
   max-width: 900px;
+
+  padding-bottom: 20px;
+
+  box-sizing: border-box;
 }
 
 .remoteCard {
   position: relative;
+
   width: 200px;
   aspect-ratio: 16 / 9;
+
   border-radius: 10px;
   overflow: hidden;
+
   background-color: #1a1a1a;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+
   flex-shrink: 0;
 }
 
 .remoteVideo {
   width: 100%;
   height: 100%;
+
   object-fit: cover;
   display: block;
 }
 
+/* =========================
+   NAME
+========================= */
+
 .nameTag {
   position: absolute;
+
   bottom: 8px;
   left: 10px;
+
   color: #fff;
+
   font-size: 12px;
   font-weight: 500;
+
   background-color: rgba(0, 0, 0, 0.55);
+
   padding: 2px 8px;
+
   border-radius: 4px;
+
+  pointer-events: none;
+
+  z-index: 5;
+}
+
+/* =========================
+   TOOLBAR
+========================= */
+
+.buttonContainer {
+  position: fixed;
+
+  left: 50%;
+  bottom: 20px;
+
+  transform: translate(-50%, 120px);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 12px;
+
+  padding: 10px 18px;
+
+  background: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(10px);
+
+  border-radius: 50px;
+
+  z-index: 1000;
+
+  opacity: 0;
+
+  transition:
+    transform 0.25s ease,
+    opacity 0.25s ease;
+
   pointer-events: none;
 }
 
-.buttonContainer {
-    position: absolute;
-    width: 100vw;
-    bottom: 0;
-    text-align: center;
+/*
+   Show toolbar when cursor is near
+   bottom of the screen.
+*/
+.meetRoom:hover .buttonContainer {
+  opacity: 1;
+
+  transform: translate(-50%, 0);
+
+  pointer-events: auto;
 }
 
-.buttonContainer > svg {
-    font-size: 32px;
+/*
+   Invisible hover area at bottom.
+   This prevents the toolbar from disappearing
+   while moving the mouse toward it.
+*/
+.meetRoom::after {
+  content: "";
+
+  position: fixed;
+
+  left: 0;
+  bottom: 0;
+
+  width: 100%;
+  height: 90px;
+
+  z-index: 999;
+
+  pointer-events: none;
+}
+
+.buttonContainer .VedioIcon,
+.buttonContainer .MicIcons,
+.buttonContainer .shareScreen,
+.buttonContainer .chatIcon {
+  color: white;
+}
+
+.buttonContainer .CallEndIcon {
+  color: red;
+}
+
+.buttonContainer .MuiSvgIcon-root {
+  font-size: 2.5rem;
+}
+
+/* =========================
+   CHAT PANEL
+========================= */
+
+.chat-room {
+  position: fixed;
+
+  top: 5vh;
+  right: 20px;
+
+  width: min(360px, 30vw);
+  height: 90vh;
+
+  background: white;
+
+  border-radius: 12px;
+
+  padding: 20px;
+
+  box-sizing: border-box;
+
+  z-index: 1100;
+
+  box-shadow: 0 8px 35px rgba(0, 0, 0, 0.45);
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+}
+
+/* =========================
+   CHAT CONTENT
+========================= */
+
+.chatContainer {
+  position: relative;
+
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+  flex-direction: column;
+
+  min-height: 0;
+}
+
+.chattingArea {
+  position: absolute;
+
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+}
+
+.meetRoom.chat-open {
+  padding-right: calc(360px + 40px);
+}
+
+.meetRoom.chat-open .mainVideoWrapper,
+.meetRoom.chat-open .remoteStrip {
+  max-width: 760px;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 900px) {
+  .chat-room {
+    width: min(400px, calc(100vw - 40px));
+    right: 20px;
+  }
+
+  .meetRoom.chat-open {
+    padding-right: 16px;
+  }
+
+  .meetRoom.chat-open .mainVideoWrapper,
+  .meetRoom.chat-open .remoteStrip {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .meetRoom {
+    padding: 10px;
+    padding-bottom: 90px;
+    gap: 10px;
+  }
+
+  .mainVideoWrapper {
+    width: 100%;
+  }
+
+  .remoteCard {
+    width: calc(50% - 6px);
+  }
+
+  .buttonContainer {
+    bottom: 12px;
+    gap: 4px;
+    padding: 8px 12px;
+  }
+
+  .buttonContainer .MuiSvgIcon-root {
+    font-size: 2rem;
+  }
+
+  .chat-room {
+    top: 10px;
+    right: 10px;
+
+    width: calc(100vw - 20px);
+    height: calc(100vh - 20px);
+  }
 }
