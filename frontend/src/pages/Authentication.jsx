@@ -6,8 +6,9 @@ import NexusLogo from "../../public/favicon.svg";
 export default function Authentication() {
   const [show, setShow] = useState(false);
 
-  const [username, setUsername] = useState();
-  const [password, setPassword] = useState();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
   const [name, setName] = useState();
   const [error, setError] = useState();
   const [messages, setMessages] = useState();

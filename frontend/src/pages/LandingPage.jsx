@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 export default function LandingPage() {
   return (
     <div>
-      <div className="landingPageContainer">
+      <div className="landingPageContainer">  
         <nav>
           <div className="navHeader">
             <img src={Logo1} alt="NexusLogo" className="NexusLogo" />
