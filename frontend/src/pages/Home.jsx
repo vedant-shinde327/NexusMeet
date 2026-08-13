@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import withAuth from "../utils/withAuth";
 import Logo1 from "../../public/favicon.svg";
 import { Button, IconButton, TextField } from "@mui/material";
 import RestoreIcon from "@mui/icons-material/Restore";
 import logo3 from "../assets/logo3.png";
 import "./Home.css";
+import AuthContext from "../contexts/AuthContext";
 
 function Home() {
   let navigate = useNavigate();
@@ -16,7 +17,9 @@ function Home() {
     navigate("/auth");
   }
 
+  const {addToUserHistory} = useContext(AuthContext);
   let handleJoinVideoCall = async () => {
+    await addToUserHistory(meetingCode);
     navigate(`/${meetingCode}`);
   };
   return (
@@ -29,7 +32,11 @@ function Home() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center" }}>
-            <IconButton>
+            <IconButton onClick={
+              () => {
+                navigate("/history");
+              }
+            }>
               <RestoreIcon />
             </IconButton>
             <p>History</p>

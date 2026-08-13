@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const meetingSchema = new Schema(
+const meetingSchema = new mongoose.Schema(
     {
         user_id: {type: String},
         meetingCode: {type: String, required: true},
@@ -8,6 +8,6 @@ const meetingSchema = new Schema(
     }
 );
 
-const Meeting = new mongoose.model("Meeting", meetingSchema);
+const Meeting = mongoose.model("Meeting", meetingSchema);
 
-export {Meeting};
+export default Meeting;

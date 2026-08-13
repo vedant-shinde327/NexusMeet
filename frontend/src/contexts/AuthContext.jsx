@@ -1,7 +1,6 @@
 import axios, { HttpStatusCode } from "axios";
 import { createContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getUserHistory } from "../../../backend/src/controllers/user.controller";
 
 const AuthContext = createContext({});
 
@@ -43,11 +42,36 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
- const getHi
+  const getHistoryOfUser = async () => {
+    try {
+      let request = await client.get("/get_all_activity", {
+        params: {
+          token: localStorage.getItem("token"),
+        },
+      });
+      return request.data;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const addToUserHistory = async (meetingCode) => {
+    try {
+      const request = await client.post("/add_to_activity", {
+        token: localStorage.getItem("token"),
+        meeting_code: meetingCode,
+      });
+      return request.data;
+    } catch (err) {
+      throw err;
+    }
+  };
 
   const data = {
     userData,
     setUserData,
+    getHistoryOfUser,
+    addToUserHistory,
     handleRegister,
     handleLogin,
   };
