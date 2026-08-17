@@ -1,6 +1,7 @@
 import Logo1 from "../../public/favicon.svg";
 import heroImg from "../assets/mobile.png";
 import { Link, useNavigate } from "react-router-dom"; 
+import "../App.css";
 
 export default function LandingPage() {
 

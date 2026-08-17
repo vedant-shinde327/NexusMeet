@@ -7,6 +7,7 @@
 .landingPageContainer {
   width: 100vw;
   height: 100vh;
+  min-height: -webkit-fill-available;
   background: url("./assets/background.png");
   background-repeat: no-repeat;
   background-size: cover;
@@ -77,4 +78,105 @@
 .landingMainContainer > div:nth-child(2) img {
   height: 80vh;
   width: auto;
+}
+
+/* ── Responsive: landingPage.css ── */
+
+@media (max-width: 1024px) {
+  .landingMainContainer {
+    padding-inline: 2rem;
+    gap: 2rem;
+  }
+
+  .landingMainContainer > div:nth-child(1) {
+    font-size: 1.8rem;
+  }
+
+  .landingMainContainer > div:nth-child(2) img {
+    height: 60vh;
+  }
+}
+
+@media (max-width: 768px) {
+  .landingPageContainer {
+    height: auto;
+    min-height: 100vh;
+    background-position: center;
+  }
+
+  .landingMainContainer {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    height: auto;
+    padding: 3rem 1.5rem;
+    gap: 2.5rem;
+  }
+
+  .landingMainContainer > div:nth-child(1) {
+    font-size: 1.6rem;
+  }
+
+  .landingMainContainer > div:nth-child(1) div[role='button'] {
+    margin-inline: auto;
+    border-radius: 14px;
+    padding: 0.85rem 1.25rem;
+  }
+
+  .landingMainContainer > div:nth-child(1) div[role='button'] a {
+    font-size: 1.3rem;
+  }
+
+  .landingMainContainer > div:nth-child(2) img {
+    height: auto;
+    width: min(80vw, 360px);
+  }
+
+  .landingPageContainer nav .navList {
+    gap: 1rem;
+    font-size: 0.95rem;
+  }
+
+  .NexusHeading {
+    font-size: 1.4rem;
+  }
+
+  .NexusLogo {
+    width: 2.4rem;
+    margin: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .landingMainContainer {
+    padding: 2rem 1rem;
+    gap: 2rem;
+  }
+
+  .landingMainContainer > div:nth-child(1) {
+    font-size: 1.3rem;
+  }
+
+  .landingMainContainer > div:nth-child(1) div[role='button'] a {
+    font-size: 1.1rem;
+  }
+
+  .landingMainContainer > div:nth-child(2) img {
+    width: 92vw;
+  }
+
+  .landingPageContainer nav .navList {
+    gap: 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  .NexusHeading {
+    font-size: 1.2rem;
+  }
+
+  .NexusLogo {
+    width: 2rem;
+    margin: 6px;
+  }
 }
