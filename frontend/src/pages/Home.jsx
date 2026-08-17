@@ -8,6 +8,7 @@ import logo3 from "../assets/logo3.png";
 import "./Home.css";
 import AuthContext from "../contexts/AuthContext";
 import axios from "axios";
+import server from "../environment";
 
 function Home() {
   let navigate = useNavigate();
@@ -16,7 +17,7 @@ function Home() {
   const createNewMeeting = async() => {
     try {
      const response = await axios.post(
-       "http://localhost:8000/api/meeting/create",
+       `${server}/api/meeting/create`,
      );
       const meetingCode = response.data.meetingCode;
 
