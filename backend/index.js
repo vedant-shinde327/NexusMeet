@@ -11,6 +11,7 @@ import connectToSocket from "./src/controllers/socketManagers.js";
 import mongoose from "mongoose";
 import cors from "cors";
 import authRoutes from "./src/routes/users.route.js";
+import meetingRoutes from "./src/routes/meeting.route.js";
 
 const app = express();
 const server = createServer(app);
@@ -24,6 +25,7 @@ app.use(express.json({ limit: "40kb" }));
 app.use(express.urlencoded({ limit: "40kb", extended: true }));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/meeting", meetingRoutes);
 
 const start = async () => {
   try {

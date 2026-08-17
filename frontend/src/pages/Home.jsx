@@ -7,10 +7,24 @@ import RestoreIcon from "@mui/icons-material/Restore";
 import logo3 from "../assets/logo3.png";
 import "./Home.css";
 import AuthContext from "../contexts/AuthContext";
+import axios from "axios";
 
 function Home() {
   let navigate = useNavigate();
   const [meetingCode, setMeetingCode] = useState("");
+
+  const createNewMeeting = async() => {
+    try {
+     const response = await axios.post(
+       "http://localhost:8000/api/meeting/create",
+     );
+      const meetingCode = response.data.meetingCode;
+
+      navigate(`/meeting/${meetingCode}`);
+    }catch(e) {
+      console.log(e);
+    }
+  }
 
   let handleLogout = () => {
     localStorage.removeItem("token");
@@ -32,11 +46,11 @@ function Home() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center" }}>
-            <IconButton onClick={
-              () => {
+            <IconButton
+              onClick={() => {
                 navigate("/history");
-              }
-            }>
+              }}
+            >
               <RestoreIcon />
             </IconButton>
             <p>History</p>
@@ -48,16 +62,29 @@ function Home() {
 
       <div className="meetContainer">
         <div className="leftPanel">
-            <div>
-                <h2 className="subTitle">Providing Quality Video Call Just Like Quality Education</h2>
-                <div style={{display: 'flex', gap:'10px'}}>
-                    <TextField onChange={e => setMeetingCode(e.target.value)} id="outlined-basic" label="Meeting Code" variant="outlined" />
-                    <Button onClick={handleJoinVideoCall} variant="contained">Join Meeting</Button>
-                </div>
+          <div>
+            <h2 className="subTitle">
+              Providing Quality Video Call Just Like Quality Education
+            </h2>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <TextField
+                onChange={(e) => setMeetingCode(e.target.value)}
+                id="outlined-basic"
+                label="Meeting Code"
+                variant="outlined"
+              />
+              <Button onClick={handleJoinVideoCall} variant="contained">
+                Join Meeting
+              </Button>
+
+              <Button variant="contained" onClick={createNewMeeting}>
+                New Meeting
+              </Button>
             </div>
+          </div>
         </div>
         <div className="rightPanel">
-            <img src={logo3} />
+          <img src={logo3} />
         </div>
       </div>
     </>

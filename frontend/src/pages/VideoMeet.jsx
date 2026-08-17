@@ -8,9 +8,11 @@ import VideocamIcon from "@mui/icons-material/Videocam";
 import VideocamOffIcon from "@mui/icons-material/VideocamOff";
 import { Badge, Button, IconButton, TextField } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import "../styles/videoComponent.css";
+import './lobby.css';
 
 const server_url = "http://localhost:8000";
 
@@ -26,12 +28,17 @@ function VideoMeet() {
 
   let routeTo = useNavigate();
 
+  const { meetingCode } = useParams();
+
   const socketRef = useRef(null);
   const socketIdRef = useRef(null);
   const localVideoRef = useRef(null);
   const videoRef = useRef([]);
 
   const connections = useRef({});
+
+  const [micReady, setMicReady] = useState(false);
+  const [camReady, setCamReady] = useState(false);
 
   const [videoAvailable, setVideoAvailable] = useState(true);
   const [audioAvailable, setAudioAvailable] = useState(true);
@@ -135,6 +142,8 @@ function VideoMeet() {
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = userMediaStream;
         }
+        setMicReady(audioPermission);
+        setCamReady(videoPermission);
       }
     } catch (err) {
       console.log(err);
@@ -528,6 +537,26 @@ function VideoMeet() {
     });
   };
 
+  const toggleMic = () => {
+    if (window.localStream) {
+      const track = window.localStream.getAudioTracks()[0];
+      if (track) {
+        track.enabled = !track.enabled;
+        setMicReady(track.enabled);
+      }
+    }
+  };
+
+  const toggleCamera = () => {
+    if (window.localStream) {
+      const track = window.localStream.getVideoTracks()[0];
+      if (track) {
+        track.enabled = !track.enabled;
+        setCamReady(track.enabled);
+      }
+    }
+  };
+
   const getMedia = () => {
     setAskForUsername(false);
 
@@ -596,7 +625,7 @@ function VideoMeet() {
       localVideoRef.current.srcObject = stream;
     }
 
-    // Replace the stream in all existing peer connections
+  
     for (let id in connections.current) {
       if (id === socketIdRef.current) continue;
 
@@ -673,11 +702,9 @@ function VideoMeet() {
 
       getDisplayMediaSuccess(stream);
     } catch (e) {
-      // User clicked Cancel
+      
       console.log("Screen sharing cancelled:", e);
 
-      // IMPORTANT:
-      // Cancel should NOT disable the camera.
       setScreen(false);
     }
   };
@@ -719,6 +746,8 @@ const handleEndCall = () => {
       socketRef.current.disconnect();
     }
 
+    setMessage("0");
+
     routeTo("/home");
   } catch (e) {
     console.log(e);
@@ -733,26 +762,64 @@ const handleEndCall = () => {
   return (
     <>
       {askForUsername ? (
-        <div>
-          <h2>Enter into Lobby</h2>
-          <TextField
-            id="outlined-basic"
-            label="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            variant="outlined"
-          />
+        <div className="lobby-container">
+          <div className="lobby-inner">
+            <div className="lobby-meta">
+              <p className="lobby-label">Ready to join?</p>
+              <h2 className="lobby-heading">Check your setup</h2>
+            </div>
 
-          <Button
-            variant="contained"
-            onClick={getMedia}
-            disabled={!username.trim()}
-          >
-            Connect
-          </Button>
+            <div className="lobbyVideo">
+              <video ref={localVideoRef} autoPlay muted playsInline />
+              <div className="lobby-video-controls">
+                <button className="lobby-icon-btn" onClick={toggleMic}>
+                  <MicIcon size={14} />
+                </button>
+                <button className="lobby-icon-btn" onClick={toggleCamera}>
+                  <VideocamIcon size={14} />
+                </button>
+              </div>
+              <span className="lobby-video-label">You</span>
+            </div>
 
-          <div>
-            <video ref={localVideoRef} autoPlay muted playsInline />
+            <div className="lobby-field">
+              <label>Display name</label>
+              <TextField
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter your name"
+                variant="outlined"
+                size="small"
+                fullWidth
+              />
+            </div>
+
+            <div className="lobby-status-row">
+              <div
+                className={`lobby-status-chip ${micReady ? "ready" : "error"}`}
+              >
+                <MicIcon size={13} /> {micReady ? "Mic ready" : "No mic"}
+              </div>
+              <div
+                className={`lobby-status-chip ${camReady ? "ready" : "error"}`}
+              >
+                <VideocamIcon size={13} />{" "}
+                {camReady ? "Camera ready" : "No camera"}
+              </div>
+            </div>
+
+            <Button
+              className="connect-btn"
+              variant="contained"
+              onClick={getMedia}
+              disabled={!username.trim()}
+            >
+              Join meeting
+            </Button>
+
+            <p className="lobby-hint">
+              Others in the room will see your name and video
+            </p>
           </div>
         </div>
       ) : (

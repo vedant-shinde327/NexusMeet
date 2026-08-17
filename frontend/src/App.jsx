@@ -16,7 +16,8 @@ function App() {
           <Route path="/auth" element={<Authentication />} />
           <Route path="/home" element={<Home />} />
           <Route path="/history" element={<History />} />
-          <Route path=":url" element={<VidewoMeet  />} />
+          <Route path=":url" element={<VidewoMeet />} />
+          <Route path="/meeting/:meetingCode" element={<VidewoMeet />} />
         </Routes>
       </AuthProvider>
     </>
