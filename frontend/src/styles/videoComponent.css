@@ -327,3 +327,98 @@
     height: calc(100vh - 20px);
   }
 }
+
+@media (max-width: 1024px) {
+  .mainVideoWrapper {
+    width: min(100%, 720px);
+  }
+
+  .meetRoom.chat-open {
+    padding-right: calc(320px + 30px);
+  }
+
+  .chat-room {
+    width: min(320px, 30vw);
+  }
+
+  .meetRoom.chat-open .mainVideoWrapper,
+  .meetRoom.chat-open .remoteStrip {
+    max-width: 620px;
+  }
+}
+
+@media (max-width: 900px) {
+  .chat-room {
+    width: min(400px, calc(100vw - 40px));
+    right: 20px;
+  }
+
+  .meetRoom.chat-open {
+    padding-right: 16px;
+  }
+
+  .meetRoom.chat-open .mainVideoWrapper,
+  .meetRoom.chat-open .remoteStrip {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .meetRoom {
+    padding: 10px;
+    padding-bottom: 90px;
+    gap: 10px;
+  }
+
+  .mainVideoWrapper {
+    width: 100%;
+    border-radius: 8px;
+  }
+
+  .remoteCard {
+    width: calc(50% - 6px);
+  }
+
+  .remoteStrip {
+    gap: 8px;
+  }
+
+  .buttonContainer {
+    bottom: 12px;
+    gap: 4px;
+    padding: 8px 12px;
+    border-radius: 40px;
+  }
+
+  .buttonContainer .MuiSvgIcon-root {
+    font-size: 1.8rem;
+  }
+
+  .chat-room {
+    top: 10px;
+    right: 10px;
+    width: calc(100vw - 20px);
+    height: calc(100vh - 20px);
+    border-radius: 10px;
+  }
+
+  .nameTag {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+}
+
+@media (max-width: 400px) {
+  .remoteCard {
+    width: 100%;
+  }
+
+  .buttonContainer {
+    gap: 2px;
+    padding: 6px 10px;
+  }
+
+  .buttonContainer .MuiSvgIcon-root {
+    font-size: 1.5rem;
+  }
+}

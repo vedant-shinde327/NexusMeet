@@ -187,3 +187,40 @@
   color: #4b5563;
   margin: 0;
 }
+
+@media (max-width: 480px) {
+  .lobby-container {
+    padding: 1.25rem 0.75rem;
+    justify-content: flex-start;
+    padding-top: 2rem;
+  }
+
+  .lobby-inner {
+    gap: 1rem;
+  }
+
+  .lobby-heading {
+    font-size: 18px;
+  }
+
+  .lobby-icon-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .lobby-status-chip {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+
+  .connect-btn {
+    height: 48px !important;
+    font-size: 14px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .lobby-status-row {
+    flex-direction: column;
+  }
+}
