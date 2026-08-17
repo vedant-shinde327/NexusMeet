@@ -1,7 +1,7 @@
 import CallEndIcon from "@mui/icons-material/CallEnd";
 import ChatIcon from "@mui/icons-material/Chat";
 import MicIcon from "@mui/icons-material/Mic";
-import MicoffIcon from "@mui/icons-material/Micoff";
+import MicOffIcon from "@mui/icons-material/MicOff";
 import ScreenShareIcon from "@mui/icons-material/ScreenShare";
 import StopScreenShareIcon from "@mui/icons-material/StopScreenShare";
 import VideocamIcon from "@mui/icons-material/Videocam";
@@ -877,7 +877,7 @@ const handleEndCall = () => {
             </IconButton>
 
             <IconButton onClick={handleAudio} className="MicIcons">
-              {audio === true ? <MicIcon /> : <MicoffIcon />}
+              {audio === true ? <MicIcon /> : <MicOffIcon />}
             </IconButton>
 
             {screenAvailable && (
