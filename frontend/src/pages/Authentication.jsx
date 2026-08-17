@@ -21,7 +21,7 @@ export default function Authentication() {
   let handleAuth = async () => {
     try {
       setError("");
-      setMessages("");
+      setMessages("");  
 
       if (formState === 0) {
         let result = await handleLogin(username, password);

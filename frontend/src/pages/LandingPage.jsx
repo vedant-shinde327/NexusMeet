@@ -1,8 +1,11 @@
 import Logo1 from "../../public/favicon.svg";
 import heroImg from "../assets/mobile.png";
-import { Link } from "react-router-dom"; 
+import { Link, useNavigate } from "react-router-dom"; 
 
 export default function LandingPage() {
+
+  const navigate = useNavigate();
+
   return (
     <div>
       <div className="landingPageContainer">  
@@ -13,9 +16,17 @@ export default function LandingPage() {
           </div>
 
           <div className="navList">
-            <p>Join as Guest</p>
-            <p>Register</p>
-            <div className="loginBtn" role="button">
+            <p onClick={() => {
+              navigate("/dfasdv")
+            }}>Join as Guest</p>
+
+            <p onClick={() => {
+              navigate("/auth")
+            }}>Register</p>
+
+            <div onClick={() => {
+              navigate("/auth")
+            }} className="loginBtn" role="button">
               Login
             </div>
           </div>
