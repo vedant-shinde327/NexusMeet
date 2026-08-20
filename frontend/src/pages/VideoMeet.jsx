@@ -8,8 +8,8 @@ import VideocamIcon from "@mui/icons-material/Videocam";
 import VideocamOffIcon from "@mui/icons-material/VideocamOff";
 import { Badge, Button, IconButton, TextField } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+
 import { io } from "socket.io-client";
 import server from "../environment";
 import "../styles/videoComponent.css";
@@ -29,6 +29,11 @@ function VideoMeet() {
   let routeTo = useNavigate();
 
   const { meetingCode } = useParams();
+  const location = useLocation();
+  const isNewMeeting = location.state?.isNewMeeting === true;
+
+  const [showMeetingCode, setShowMeetingCode] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const socketRef = useRef(null);
   const socketIdRef = useRef(null);
@@ -149,6 +154,12 @@ function VideoMeet() {
       console.log(err);
     }
   };
+
+  useEffect(() => {
+    if(isNewMeeting) {
+      setShowMeetingCode(true);
+    }
+  }, [isNewMeeting]);
 
   useEffect(() => {
     getPermissions();
@@ -753,12 +764,64 @@ function VideoMeet() {
     }
   };
 
+  const handleCopyMeetingCode = async() => {
+    try {
+      await navigator.clipboard.writeText(meetingCode);
+
+      setCopied(true);
+
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    } catch(e) {
+      console.log(`Failed to copy: `, e);
+    }
+  };
+
   // --------------------------------------------------
   // Render
   // --------------------------------------------------
 
   return (
     <>
+      {showMeetingCode && (
+        <div className="meetingCodeOverlay">
+          <div className="meetingCodeModal">
+            <button
+              className="closeMeetingCode"
+              onClick={() => setShowMeetingCode(false)}
+            >
+              ×
+            </button>
+
+            <h2>Your meeting is ready</h2>
+
+            <p className="meetingCodeDescription">
+              Share this meeting code with others so they can join.
+            </p>
+
+            <div className="meetingCodeBox">
+              <span>{meetingCode}</span>
+
+              <button onClick={handleCopyMeetingCode}>
+                {copied ? "Copied!" : "Copy"}
+              </button>
+            </div>
+
+            <p className="meetingCodeHint">
+              Anyone with this code can join your meeting.
+            </p>
+
+            <button
+              className="continueMeetingButton"
+              onClick={() => setShowMeetingCode(false)}
+            >
+              Continue to meeting
+            </button>
+          </div>
+        </div>
+      )}
+      
       {askForUsername ? (
         <div className="lobby-container">
           <div className="lobby-inner">

@@ -21,7 +21,9 @@ function Home() {
      );
       const meetingCode = response.data.meetingCode;
 
-      navigate(`/meeting/${meetingCode}`);
+      navigate(`/meeting/${meetingCode}`, {
+        state: {isNewMeeting: true}
+      });
     }catch(e) {
       console.log(e);
     }
