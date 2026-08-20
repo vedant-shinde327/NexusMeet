@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import server from "../environment";
 import "../styles/videoComponent.css";
-import './lobby.css';
+import "./lobby.css";
 
 const server_url = server;
 
@@ -26,7 +26,6 @@ const peerConfigConnections = {
 };
 
 function VideoMeet() {
-
   let routeTo = useNavigate();
 
   const { meetingCode } = useParams();
@@ -54,7 +53,7 @@ function VideoMeet() {
   const [message, setMessage] = useState("");
   const [newMessages, setNewMessages] = useState(0);
 
-  const [showModal, setModal] = useState(true);
+  const [showModal, setModal] = useState(false);
 
   const [videos, setVideos] = useState([]);
 
@@ -626,7 +625,6 @@ function VideoMeet() {
       localVideoRef.current.srcObject = stream;
     }
 
-  
     for (let id in connections.current) {
       if (id === socketIdRef.current) continue;
 
@@ -703,7 +701,6 @@ function VideoMeet() {
 
       getDisplayMediaSuccess(stream);
     } catch (e) {
-      
       console.log("Screen sharing cancelled:", e);
 
       setScreen(false);
@@ -733,28 +730,28 @@ function VideoMeet() {
     setMessage("");
   };
 
-const handleEndCall = () => {
-  try {
-    if (localVideoRef.current?.srcObject) {
-      localVideoRef.current.srcObject
-        .getTracks()
-        .forEach((track) => track.stop());
+  const handleEndCall = () => {
+    try {
+      if (localVideoRef.current?.srcObject) {
+        localVideoRef.current.srcObject
+          .getTracks()
+          .forEach((track) => track.stop());
 
-      localVideoRef.current.srcObject = null;
+        localVideoRef.current.srcObject = null;
+      }
+
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+
+      setMessage("0");
+
+      routeTo("/home");
+    } catch (e) {
+      console.log(e);
+      routeTo("/home");
     }
-
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-    }
-
-    setMessage("0");
-
-    routeTo("/home");
-  } catch (e) {
-    console.log(e);
-    routeTo("/home");
-  }
-};
+  };
 
   // --------------------------------------------------
   // Render
