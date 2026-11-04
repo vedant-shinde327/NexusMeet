@@ -22,19 +22,23 @@ const login = async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
 
-    if (!isMatch) { 
+    if (!isMatch) {
       return res.status(httpStatus.UNAUTHORIZED).json({
         message: "Invalid Credentials",
       });
     }
-    const token = crypto.randomBytes(20).toString("hex");
 
+    const token = crypto.randomBytes(20).toString("hex");
     user.token = token;
     await user.save();
 
-    return res.status(httpStatus.OK).json({ token: token });
+    return res.status(httpStatus.OK).json({
+      token: token,
+      name: user.name,
+      username: user.username,
+    });
   } catch (e) {
-    return res.status(500).json({ message: `Something went wrong ${e}` });
+    return res.status(500).json({ message: `Something went wrong: ${e}` });
   }
 };
 
@@ -91,4 +95,31 @@ const addToHistory = async (req, res) => {
   }
 }
 
-export { register, login, getUserHistory, addToHistory };
+const getUserProfile = async (req, res) => {
+  const token = req.query.token || req.body.token;
+
+  try {
+    if (!token) {
+      return res
+        .status(httpStatus.BAD_REQUEST)
+        .json({ message: "Token required" });
+    }
+
+    const user = await User.findOne({ token });
+
+    if (!user) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json({ message: "User not found" });
+    }
+
+    return res.status(httpStatus.OK).json({
+      name: user.name,
+      username: user.username,
+    });
+  } catch (e) {
+    return res.status(500).json({ message: `Something went wrong: ${e}` });
+  }
+};
+
+export { register, login, getUserHistory, addToHistory, getUserProfile };

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Logo1 from "../../public/favicon.svg";
-import heroImg from "../assets/mobile.png";
 import "../App.css";
 
 export default function LandingPage() {
@@ -118,11 +117,59 @@ export default function LandingPage() {
 
         <div className="landing-hero-visual">
           <div className="landing-glow-backdrop" />
-          <img
-            src={heroImg}
-            alt="NexusMeet mobile and desktop preview"
-            className="landing-hero-img"
-          />
+
+          {/* Simulated Video Call UI Preview Card */}
+          <div className="hero-mockup-container">
+            <div className="hero-mockup-header">
+              <span className="mockup-dot red" />
+              <span className="mockup-dot yellow" />
+              <span className="mockup-dot green" />
+              <span className="mockup-room-title">
+                nexusmeet.app/room/ux-sync
+              </span>
+            </div>
+
+            <div className="hero-mockup-grid">
+              {/* Tile 1 */}
+              <div className="mockup-tile">
+                <div className="mockup-avatar gradient-1">JS</div>
+                <span className="mockup-tag">Jessica (Host)</span>
+                <div className="mockup-mic active">🎤</div>
+              </div>
+
+              {/* Tile 2 */}
+              <div className="mockup-tile">
+                <div className="mockup-avatar gradient-2">VR</div>
+                <span className="mockup-tag">Vedant</span>
+                <div className="mockup-mic active">🎤</div>
+              </div>
+
+              {/* Tile 3 */}
+              <div className="mockup-tile">
+                <div className="mockup-avatar gradient-3">AK</div>
+                <span className="mockup-tag">Aarav</span>
+                <div className="mockup-mic muted">🔇</div>
+              </div>
+
+              {/* Tile 4 (Screen share preview simulation) */}
+              <div className="mockup-tile screen-share-tile">
+                <div className="screen-share-content">
+                  <div className="mini-code-line" />
+                  <div className="mini-code-line short" />
+                  <div className="mini-code-line medium" />
+                </div>
+                <span className="mockup-tag">Screen Share</span>
+              </div>
+            </div>
+
+            <div className="hero-mockup-toolbar">
+              <span className="mockup-tool-btn active">📹</span>
+              <span className="mockup-tool-btn active">🎙️</span>
+              <span className="mockup-tool-btn">💻</span>
+              <span className="mockup-tool-btn">💬</span>
+              <span className="mockup-tool-btn danger">📞</span>
+            </div>
+          </div>
         </div>
       </main>
 

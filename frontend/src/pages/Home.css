@@ -287,6 +287,287 @@
   border-radius: 18px;
 }
 
+/* ── Spotlight Active Speaker Dashboard Preview ── */
+.rightPanel {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-spotlight-mockup {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  background: rgba(10, 14, 24, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.spotlight-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.spotlight-badge-secure {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.secure-lock {
+  font-size: 0.68rem;
+}
+
+.spotlight-latency {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: #3ec6e0;
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.latency-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+/* Main Video Stage */
+.spotlight-main-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 11;
+  background: radial-gradient(circle at center, rgba(108, 99, 255, 0.15) 0%, #07090e 75%);
+  border-radius: 16px;
+  border: 1px solid rgba(62, 198, 224, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.spotlight-avatar-wrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.spotlight-ring {
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid #3ec6e0;
+  animation: pulse-ring 2s infinite ease-in-out;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.08); opacity: 0.3; }
+  100% { transform: scale(1); opacity: 0.8; }
+}
+
+.spotlight-avatar-initials {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6c63ff 0%, #3ec6e0 100%);
+  color: white;
+  font-size: 1.3rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(108, 99, 255, 0.4);
+}
+
+.spotlight-speaker-info {
+  text-align: center;
+  z-index: 2;
+}
+
+.spotlight-name {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.spotlight-role {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+/* Waveform Animation */
+.spotlight-waveform {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 16px;
+  margin-top: 8px;
+}
+
+.wave-bar {
+  width: 3px;
+  background: #3ec6e0;
+  border-radius: 2px;
+  animation: wave-bounce 1.2s infinite ease-in-out alternate;
+}
+
+.bar-1 { animation-delay: 0.1s; height: 8px; }
+.bar-2 { animation-delay: 0.3s; height: 16px; }
+.bar-3 { animation-delay: 0.2s; height: 12px; }
+.bar-4 { animation-delay: 0.4s; height: 14px; }
+.bar-5 { animation-delay: 0.15s; height: 6px; }
+
+@keyframes wave-bounce {
+  0% { transform: scaleY(0.4); opacity: 0.4; }
+  100% { transform: scaleY(1.2); opacity: 1; }
+}
+
+/* Floating Thumbnail */
+.spotlight-thumb-tile {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 84px;
+  aspect-ratio: 16 / 11;
+  background: #111827;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.thumb-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f43f5e, #fb7185);
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.thumb-name {
+  font-size: 0.6rem;
+  color: #cbd5e1;
+}
+
+.thumb-mic {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.5rem;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 1px 3px;
+  border-radius: 4px;
+}
+
+/* Control Deck */
+.spotlight-control-deck {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px 12px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.spotlight-btn {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.spotlight-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #3ec6e0;
+}
+
+.spotlight-btn.screen {
+  background: rgba(62, 198, 224, 0.1);
+  border-color: rgba(62, 198, 224, 0.3);
+  color: #7ee8f8;
+}
+
+.spotlight-btn.chat {
+  position: relative;
+}
+
+.chat-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #6c63ff;
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 700;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spotlight-btn.leave {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  padding: 0 10px;
+}
+
+.spotlight-btn.leave:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+}
+
 /* ── History Page Button Fixes ── */
 .history-action-btn {
   background: rgba(255, 255, 255, 0.08) !important;

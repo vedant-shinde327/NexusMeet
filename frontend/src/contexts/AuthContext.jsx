@@ -13,6 +13,30 @@ export const AuthProvider = ({ children }) => {
   const [userData, setUserData] = useState(null);
   const navigate = useNavigate();
 
+  // 1. Define getUserProfile FIRST so other functions can call it safely
+  const getUserProfile = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return null;
+      const response = await client.get("/get_user_profile", {
+        params: { token },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Failed to fetch profile:", error);
+      return null;
+    }
+  };
+
+  const updateUserProfile = async (updatedData) => {
+    const token = localStorage.getItem("token");
+    const response = await client.put("/update_user_profile", {
+      token,
+      ...updatedData,
+    });
+    return response.data;
+  };
+
   const handleRegister = async (name, username, password) => {
     const request = await client.post("/register", {
       name,
@@ -34,6 +58,20 @@ export const AuthProvider = ({ children }) => {
 
       if (request.status === HttpStatusCode.Ok) {
         localStorage.setItem("token", request.data.token);
+        // Save name if returned by backend, or fetch profile
+        if (request.data.name) {
+          localStorage.setItem("userName", request.data.name);
+          setUserData({
+            name: request.data.name,
+            username: request.data.username,
+          });
+        } else {
+          const profile = await getUserProfile();
+          if (profile) {
+            localStorage.setItem("userName", profile.name);
+            setUserData(profile);
+          }
+        }
         navigate("/home");
       }
       return request.data;
@@ -43,7 +81,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ADDED: Handle Google credential token sent from Google SDK
   const handleGoogleLogin = async (credential) => {
     try {
       const request = await client.post("/google-login", {
@@ -52,6 +89,19 @@ export const AuthProvider = ({ children }) => {
 
       if (request.status === HttpStatusCode.Ok && request.data.token) {
         localStorage.setItem("token", request.data.token);
+        if (request.data.name) {
+          localStorage.setItem("userName", request.data.name);
+          setUserData({
+            name: request.data.name,
+            username: request.data.username,
+          });
+        } else {
+          const profile = await getUserProfile();
+          if (profile) {
+            localStorage.setItem("userName", profile.name);
+            setUserData(profile);
+          }
+        }
         navigate("/home");
       }
       return request.data;
@@ -85,7 +135,9 @@ export const AuthProvider = ({ children }) => {
     addToUserHistory,
     handleRegister,
     handleLogin,
-    handleGoogleLogin, // <-- Provided to components here
+    handleGoogleLogin,
+    getUserProfile,
+    updateUserProfile,
   };
 
   return <AuthContext.Provider value={data}>{children}</AuthContext.Provider>;
