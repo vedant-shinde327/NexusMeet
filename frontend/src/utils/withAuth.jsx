@@ -6,18 +6,21 @@ const withAuth = (WrappedComponent) => {
     const navigate = useNavigate();
 
     const isAuthenticated = () => {
-        if(localStorage.getItem("token")) {
-            return true;
-        }
-        return false
-    }
+      return !!localStorage.getItem("token");
+    };
+
     useEffect(() => {
-        if(!isAuthenticated()) {
-            navigate("/auth");
-        }
-    }, [])
-    return <WrappedComponent {...props} /> 
-  }
+      if (!isAuthenticated()) {
+        navigate("/auth", { replace: true });
+      }
+    }, [navigate]);
+
+    if (!isAuthenticated()) {
+      return null;
+    }
+
+    return <WrappedComponent {...props} />;
+  };
   return AuthComponent;
 };
 

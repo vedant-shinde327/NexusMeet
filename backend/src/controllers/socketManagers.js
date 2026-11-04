@@ -17,31 +17,36 @@ const connectToSocket = (server) => {
   console.log("socket.IO initialized");
 
   io.on("connection", (socket) => {
-    console.log("something connected: ", socket.id);
+    console.log("User connected: ", socket.id);
 
     socket.on("join-call", (path) => {
-      if (connections[path] === undefined) {
-        connections[path] = [];
+      const roomKey = path || "default-room";
+      if (connections[roomKey] === undefined) {
+        connections[roomKey] = [];
       }
-      connections[path].push(socket.id);
+
+      if (!connections[roomKey].includes(socket.id)) {
+        connections[roomKey].push(socket.id);
+      }
 
       timeOnline[socket.id] = new Date();
+      socket.join(roomKey);
 
-      for (let a = 0; a < connections[path].length; a++) {
-        io.to(connections[path][a]).emit(
+      for (let a = 0; a < connections[roomKey].length; a++) {
+        io.to(connections[roomKey][a]).emit(
           "user-joined",
           socket.id,
-          connections[path],
+          connections[roomKey],
         );
       }
 
-      if (messages[path] !== undefined) {
-        for (let a = 0; a < messages[path].length; ++a) {
+      if (messages[roomKey] !== undefined) {
+        for (let a = 0; a < messages[roomKey].length; ++a) {
           io.to(socket.id).emit(
             "chat-message",
-            messages[path][a]["data"],
-            messages[path][a]["sender"],
-            messages[path][a]["socket-id-sender"],
+            messages[roomKey][a]["data"],
+            messages[roomKey][a]["sender"],
+            messages[roomKey][a]["socket-id-sender"],
           );
         }
       }
@@ -52,60 +57,50 @@ const connectToSocket = (server) => {
     });
 
     socket.on("chat-message", (data, sender) => {
-      const [mathchingRoom, found] = Object.entries(connections).reduce(
-        ([room, isFound], [roomKey, roomValue]) => {
-          if (!isFound && roomValue.includes(socket.id)) {
-            return [roomKey, true];
-          }
-          return [room, isFound];
-        },
-        ["", false],
-      );
-
-      if (found === true) {
-        if (messages[mathchingRoom] === undefined) {
-          messages[mathchingRoom] = [];
+      let matchingRoom = "";
+      for (const [roomKey, roomValue] of Object.entries(connections)) {
+        if (roomValue.includes(socket.id)) {
+          matchingRoom = roomKey;
+          break;
         }
-        messages[mathchingRoom].push({
+      }
+
+      if (matchingRoom) {
+        if (messages[matchingRoom] === undefined) {
+          messages[matchingRoom] = [];
+        }
+        messages[matchingRoom].push({
           sender: sender,
           data: data,
           "socket-id-sender": socket.id,
         });
 
-        connections[mathchingRoom].forEach((element) => {
-          io.to(element).emit("chat-message", data, sender, socket.io);
+        connections[matchingRoom].forEach((element) => {
+          io.to(element).emit("chat-message", data, sender, socket.id);
         });
       }
     });
 
     socket.on("disconnect", () => {
-      var diffTime = Math.abs(timeOnline[socket.id] - new Date());
+      for (const [key, v] of Object.entries(connections)) {
+        if (v.includes(socket.id)) {
+          for (let a = 0; a < v.length; ++a) {
+            io.to(v[a]).emit("user-left", socket.id);
+          }
 
-      var key;
-
-      for (const [k, v] of JSON.parse(
-        JSON.stringify(Object.entries(connections)),
-      )) {
-        for (let a = 0; a < v.length; ++a) {
-          if (v[a] === socket.id) {
-            key = k;
-
-            for (let a = 0; a < connections[key].length; ++a) {
-              io.to(connections[key][a]).emit("user-left", socket.id);
-            }
-
-            var index = connections[key].indexOf(socket.id);
-
+          const index = connections[key].indexOf(socket.id);
+          if (index !== -1) {
             connections[key].splice(index, 1);
+          }
 
-            // clean up temporary variable (was an invalid TypeScript annotation)
-            let _connections_cleanup = {};
-            if (connections[key].length === 0) {
-              delete connections[key];
-            }
+          if (connections[key].length === 0) {
+            delete connections[key];
+            delete messages[key];
           }
         }
       }
+      delete timeOnline[socket.id];
+      console.log("User disconnected: ", socket.id);
     });
   });
 };

@@ -11,7 +11,6 @@ const client = axios.create({
 
 export const AuthProvider = ({ children }) => {
   const [userData, setUserData] = useState(null);
-
   const navigate = useNavigate();
 
   const handleRegister = async (name, username, password) => {
@@ -21,7 +20,7 @@ export const AuthProvider = ({ children }) => {
       password,
     });
 
-    if (request.status === HttpStatusCode.Created) {
+    if (request.status === HttpStatusCode.Created || request.status === 200) {
       return request.data.message;
     }
   };
@@ -44,25 +43,39 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const getHistoryOfUser = async () => {
-    
-      let request = await client.get("/get_all_activity", {
-        params: {
-          token: localStorage.getItem("token"),
-        },
+  // ADDED: Handle Google credential token sent from Google SDK
+  const handleGoogleLogin = async (credential) => {
+    try {
+      const request = await client.post("/google-login", {
+        token: credential,
       });
+
+      if (request.status === HttpStatusCode.Ok && request.data.token) {
+        localStorage.setItem("token", request.data.token);
+        navigate("/home");
+      }
       return request.data;
-  
+    } catch (error) {
+      console.error("Google login backend error:", error);
+      throw error;
+    }
+  };
+
+  const getHistoryOfUser = async () => {
+    let request = await client.get("/get_all_activity", {
+      params: {
+        token: localStorage.getItem("token"),
+      },
+    });
+    return request.data;
   };
 
   const addToUserHistory = async (meetingCode) => {
-
-      const request = await client.post("/add_to_activity", {
-        token: localStorage.getItem("token"),
-        meeting_code: meetingCode,
-      });
-      return request.data;
-    
+    const request = await client.post("/add_to_activity", {
+      token: localStorage.getItem("token"),
+      meeting_code: meetingCode,
+    });
+    return request.data;
   };
 
   const data = {
@@ -72,6 +85,7 @@ export const AuthProvider = ({ children }) => {
     addToUserHistory,
     handleRegister,
     handleLogin,
+    handleGoogleLogin, // <-- Provided to components here
   };
 
   return <AuthContext.Provider value={data}>{children}</AuthContext.Provider>;

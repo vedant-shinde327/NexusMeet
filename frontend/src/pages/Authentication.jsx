@@ -1,182 +1,266 @@
-import { useContext, useState } from "react";
-import AuthContext from "../contexts/AuthContext.jsx";
-import "./Login.css";
+import { useContext, useState, useEffect } from "react";
+
+import { useLocation, useNavigate } from "react-router-dom";
+
 import NexusLogo from "../../public/favicon.svg";
 
+import AuthContext from "../contexts/AuthContext.jsx";
+
+import "./Login.css";
+
 export default function Authentication() {
-  const [show, setShow] = useState(false);
+  const location = useLocation();
+
+  const navigate = useNavigate();
+
+  const [showPassword, setShowPassword] = useState(false);
 
   const [username, setUsername] = useState("");
+
   const [password, setPassword] = useState("");
 
-  const [name, setName] = useState();
-  const [error, setError] = useState();
-  const [messages, setMessages] = useState();
+  const [name, setName] = useState("");
 
-  const [formState, setFormState] = useState(0);
-  const [open, setOpen] = useState();
+  const [error, setError] = useState("");
 
-  const { handleRegister, handleLogin } = useContext(AuthContext);
+  const [successMessage, setSuccessMessage] = useState("");
 
-  let handleAuth = async () => {
+  const [loading, setLoading] = useState(false);
+
+  // formState: 0 = Sign In, 1 = Sign Up
+
+  const [formState, setFormState] = useState(
+    location.state?.mode === "register" ? 1 : 0,
+  );
+
+  const { handleRegister, handleLogin, handleGoogleLogin } =
+    useContext(AuthContext);
+
+  // Initialize Google Identity Services script
+  useEffect(() => {
+    const googleClientId =
+      "807864576822-9gdormbgc60pkprc3ft8jvbok6qmudsq.apps.googleusercontent.com"; // Replace with your actual Google Client ID if needed
+
+    const initializeGoogleScript = () => {
+      if (window.google && document.getElementById("google-button-div")) {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: async (response) => {
+            try {
+              setError("");
+              setSuccessMessage("");
+              setLoading(true);
+              if (handleGoogleLogin) {
+                await handleGoogleLogin(response.credential);
+                setSuccessMessage("Signed in with Google successfully!");
+              } else {
+                alert("Google login function is not defined in AuthContext.");
+              }
+            } catch (err) {
+              setError(
+                err.response?.data?.message ||
+                  err.message ||
+                  "Google sign-in failed",
+              );
+            } finally {
+              setLoading(false);
+            }
+          },
+        });
+
+        window.google.accounts.id.renderButton(
+          document.getElementById("google-button-div"),
+          {
+            theme: "filled_black", // Switches Google's button to dark mode
+            size: "large",
+            shape: "rectangular",
+            logo_alignment: "left",
+          },
+        );
+      }
+    };
+
+    if (!document.getElementById("google-client-script")) {
+      const script = document.createElement("script");
+      script.id = "google-client-script";
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.onload = initializeGoogleScript;
+      document.body.appendChild(script);
+    } else {
+      initializeGoogleScript();
+    }
+  }, [handleGoogleLogin]);
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+
+    setError("");
+
+    setSuccessMessage("");
+
+    setLoading(true);
+
     try {
-      setError("");
-      setMessages("");  
-
       if (formState === 0) {
-        let result = await handleLogin(username, password);
+        await handleLogin(username.trim(), password);
 
-        console.log(result);
+        setSuccessMessage("Signed in successfully!");
+      } else {
+        if (!name.trim()) {
+          throw new Error("Full name is required");
+        }
 
-        setMessages("signed in succefully!");
-        setOpen(true);
+        const result = await handleRegister(
+          name.trim(),
+
+          username.trim(),
+
+          password,
+        );
+
+        setSuccessMessage(
+          result || "Account created successfully! Please sign in.",
+        );
 
         setTimeout(() => {
-          setOpen(false);
-        }, 2500);
-        
-      }   
+          setFormState(0);
 
-      if (formState === 1) {
-        let result = await handleRegister(name, username, password);
-
-        console.log(result);
-
-        setUsername("");
-        setMessages(result);
-        setOpen(true);
-        setError("");
-        setFormState(0);
-        setPassword("");
-        setName("");
+          setPassword("");
+        }, 1500);
       }
     } catch (err) {
-      const message = err.response?.data?.message || "Something went wrong";
+      const message =
+        err.response?.data?.message || err.message || "Something went wrong";
 
       setError(message);
-      setOpen(false);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <>
-      {open && (
+      {successMessage && (
         <div className="success-popup">
           <span>✓</span>
-          Signed in successfully!
+
+          {successMessage}
         </div>
       )}
 
       <div className="login-page">
-        {/* ── Left ── */}
+        {/* ── Left Promotional Panel ── */}
+
         <div className="login-left">
-          <div className="login-logo">
+          <div className="login-logo" onClick={() => navigate("/")}>
             <div className="login-logo-icon">
-              <img
-                src={NexusLogo}
-                width="40"
-                height="40"
-                viewBox="0 0 40 40"
-                fill="white"
-              />
+              <img src={NexusLogo} alt="NexusMeet" width="22" height="22" />
             </div>
+
             <span className="login-logo-text">NexusMeet</span>
           </div>
 
           <div className="login-hero">
             <p className="login-eyebrow">Online Meeting Platform</p>
+
             <h1 className="login-heading">
               Meet Anyone.
               <br />
               Anywhere.
             </h1>
+
             <p className="login-subtext">
               HD video, screen sharing, and real-time collaboration — all in one
-              place.
+              secure space.
             </p>
           </div>
 
           <div className="login-badge">
             <span className="login-badge-dot" />
+
             <span className="login-badge-text">
-              2,481 meetings happening right now
+              Secure WebRTC video rooms active globally
             </span>
           </div>
         </div>
 
-        {/* ── Right ── */}
+        {/* ── Right Form Panel ── */}
+
         <div className="login-right">
           <div className="login-card">
-            <h2 className="login-card-title">Welcome back</h2>
-            <p className="login-card-sub">Sign in to your account</p>
+            <h2 className="login-card-title">
+              {formState === 0 ? "Welcome back" : "Create account"}
+            </h2>
 
-            {/* Google */}
-            <button className="login-google-btn">
-              <svg width="18" height="18" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                />
-              </svg>
-              Continue with Google
-            </button>
+            <p className="login-card-sub">
+              {formState === 0
+                ? "Sign in to access your meetings"
+                : "Get started with NexusMeet for free"}
+            </p>
+
+            {/* Google OAuth Button Container (Injected by Google SDK) */}
+
+            {/* Google OAuth Button Container */}
+            <div
+              id="google-button-div"
+              style={{
+                width: "100%",
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "16px",
+              }}
+            ></div>
 
             <div className="login-divider">
               <div className="login-divider-line" />
-              <span className="login-divider-text">or</span>
+
+              <span className="login-divider-text">or with username</span>
+
               <div className="login-divider-line" />
             </div>
 
-            {/* Fields */}
-            <div className="login-fields">
-              {formState === 1 ? (
+            {/* Form Fields */}
+
+            <form className="login-fields" onSubmit={handleAuth}>
+              {formState === 1 && (
                 <input
                   className="login-input"
                   type="text"
                   placeholder="Full Name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  required
                 />
-              ) : (
-                <></>
               )}
 
               <input
                 className="login-input"
-                type="username"
-                placeholder="username"
-                name="username"
+                type="text"
+                placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                required
               />
 
               <div className="login-input-wrap">
                 <input
                   className="login-input login-input-password"
-                  type={show ? "text" : "password"}
+                  type={showPassword ? "text" : "password"}
                   placeholder="Password"
-                  name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
                 />
 
                 <button
+                  type="button"
                   className="login-eye-btn"
-                  onClick={() => setShow(!show)}
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label="Toggle password visibility"
                 >
-                  {show ? (
+                  {showPassword ? (
                     <svg
                       width="16"
                       height="16"
@@ -186,7 +270,9 @@ export default function Authentication() {
                       strokeWidth="2"
                     >
                       <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+
                       <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+
                       <line x1="1" y1="1" x2="23" y2="23" />
                     </svg>
                   ) : (
@@ -199,36 +285,41 @@ export default function Authentication() {
                       strokeWidth="2"
                     >
                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+
                       <circle cx="12" cy="12" r="3" />
                     </svg>
                   )}
                 </button>
               </div>
-            </div>
 
-            {/* ERROR */}
-            {error && <p style={{ color: "red" }}>{error}</p>}
+              {error && <p className="login-error-text">{error}</p>}
 
-            {/* SUCCESS */}
-            {messages && <p style={{ color: "green" }}>{messages}</p>}
-
-            <button
-              type="button"
-              className="login-submit-btn "
-              onClick={handleAuth}
-            >
-              {formState === 0 ? "Sign in" : "Create account"}
-            </button>
+              <button
+                type="submit"
+                className="login-submit-btn"
+                disabled={loading}
+              >
+                {loading
+                  ? "Please wait..."
+                  : formState === 0
+                    ? "Sign in"
+                    : "Create account"}
+              </button>
+            </form>
 
             <p className="login-signup-text">
-              {formState === 0 ? "No account?" : "Already have an account?"}{" "}
+              {formState === 0
+                ? "Don't have an account?"
+                : "Already have an account?"}{" "}
               <button
                 type="button"
                 className="login-signup-link"
                 onClick={() => {
                   setFormState(formState === 0 ? 1 : 0);
+
                   setError("");
-                  setMessages("");
+
+                  setSuccessMessage("");
                 }}
               >
                 {formState === 0 ? "Sign up free" : "Sign in"}

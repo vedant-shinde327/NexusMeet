@@ -1,377 +1,598 @@
 .meetRoom {
   position: relative;
+  width: 100%;
+  height: 100vh;
+  background: #08090f;
+  color: #f8fafc;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 16px;
-
-  width: 100%;
-  min-height: 100vh;
-
-  padding: 16px;
-  padding-bottom: 100px;
-
-  box-sizing: border-box;
-  background-color: #332626;
-
-  overflow-y: auto;
-  overflow-x: hidden;
-
-  transition: padding-right 0.3s ease;
-}
-
-/* =========================
-   MAIN VIDEO
-========================= */
-
-.mainVideoWrapper {
-  position: relative;
-
-  width: min(100%, 900px);
-  aspect-ratio: 16 / 9;
-
-  border-radius: 12px;
   overflow: hidden;
-
-  background-color: #1a1a1a;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
-
-  transition:
-    width 0.3s ease,
-    max-width 0.3s ease,
-    transform 0.3s ease;
 }
 
-.mainVideo {
+/* =========================================================
+   TOP HEADER BAR
+========================================================= */
+.meet-topbar {
+  height: 60px;
   width: 100%;
-  height: 100%;
-
-  object-fit: cover;
-  display: block;
-}
-
-/* =========================
-   REMOTE PARTICIPANTS
-========================= */
-
-.remoteStrip {
+  padding: 0 1.5rem;
   display: flex;
-
-  flex-direction: row;
-  flex-wrap: wrap;
-
-  gap: 12px;
-  justify-content: center;
   align-items: center;
-
-  width: 100%;
-  max-width: 900px;
-
-  padding-bottom: 20px;
-
-  box-sizing: border-box;
-}
-
-.remoteCard {
-  position: relative;
-
-  width: 200px;
-  aspect-ratio: 16 / 9;
-
-  border-radius: 10px;
-  overflow: hidden;
-
-  background-color: #1a1a1a;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
-
+  justify-content: space-between;
+  background: rgba(15, 20, 32, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  z-index: 100;
   flex-shrink: 0;
 }
 
-.remoteVideo {
+.meet-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.meet-brand-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #3ec6e0;
+  box-shadow: 0 0 10px #3ec6e0;
+}
+
+.meet-topbar-title {
+  font-size: 1rem;
+  font-weight: 700;
+  background: linear-gradient(to right, #a89fff, #7ee8f8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.meet-code-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.meet-code-pill:hover {
+  border-color: #3ec6e0;
+  background: rgba(62, 198, 224, 0.1);
+}
+
+.meet-code-pill code {
+  color: #3ec6e0;
+  font-weight: 600;
+}
+
+.meet-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.meet-stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12.5px;
+  color: #cbd5e1;
+}
+
+/* =========================================================
+   MAIN WORKSPACE (STAGE + SIDEBAR)
+========================================================= */
+.meet-workspace {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  position: relative;
+  padding: 16px 20px 92px;
+  gap: 16px;
+}
+
+.videoStage {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Dynamic Gallery Grid when nobody is pinned */
+.video-grid {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  display: grid;
+  gap: 14px;
+}
+
+.video-grid.count-1 {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.video-grid.count-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.video-grid.count-3,
+.video-grid.count-4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.video-grid.count-many {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-auto-rows: minmax(180px, 1fr);
+}
+
+/* Spotlight / Pinned Layout */
+.pinned-stage-container {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pinned-main-slot {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+}
+
+.pinned-filmstrip {
+  height: 130px;
+  flex-shrink: 0;
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.pinned-filmstrip .video-tile {
+  width: 210px;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   VIDEO TILE CARD
+========================================================= */
+.video-tile {
+  position: relative;
   width: 100%;
   height: 100%;
+  min-height: 180px;
+  background: #111827;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
+.video-tile video {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   display: block;
 }
 
-/* =========================
-   NAME
-========================= */
+.video-tile.is-local:not(.is-screen) video {
+  transform: scaleX(-1);
+}
+
+.video-tile.is-pinned video {
+  object-fit: contain;
+  background: #05070b;
+}
+
+.tile-avatar-fallback {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.tile-avatar-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6c63ff 0%, #3ec6e0 100%);
+  color: white;
+  font-size: 1.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
 
 .nameTag {
   position: absolute;
-
-  bottom: 8px;
-  left: 10px;
-
-  color: #fff;
-
-  font-size: 12px;
+  left: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  color: #f8fafc;
+  background: rgba(8, 9, 15, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(6px);
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 500;
-
-  background-color: rgba(0, 0, 0, 0.55);
-
-  padding: 2px 8px;
-
-  border-radius: 4px;
-
-  pointer-events: none;
-
   z-index: 5;
+  pointer-events: none;
 }
 
-/* =========================
-   TOOLBAR
-========================= */
-
-.buttonContainer {
-  position: fixed;
-
-  left: 50%;
-  bottom: 20px;
-
-  transform: translate(-50%, 120px);
-
+.pinButton {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-
-  gap: 12px;
-
-  padding: 10px 18px;
-
-  background: rgba(20, 20, 20, 0.85);
-  backdrop-filter: blur(10px);
-
-  border-radius: 50px;
-
-  z-index: 1000;
-
-  opacity: 0;
-
-  transition:
-    transform 0.25s ease,
-    opacity 0.25s ease;
-
-  pointer-events: none;
-}
-
-/*
-   Show toolbar when cursor is near
-   bottom of the screen.
-*/
-.meetRoom:hover .buttonContainer {
-  opacity: 1;
-
-  transform: translate(-50%, 0);
-
-  pointer-events: auto;
-}
-
-/*
-   Invisible hover area at bottom.
-   This prevents the toolbar from disappearing
-   while moving the mouse toward it.
-*/
-.meetRoom::after {
-  content: "";
-
-  position: fixed;
-
-  left: 0;
-  bottom: 0;
-
-  width: 100%;
-  height: 90px;
-
-  z-index: 999;
-
-  pointer-events: none;
-}
-
-.buttonContainer .VedioIcon,
-.buttonContainer .MicIcons,
-.buttonContainer .shareScreen,
-.buttonContainer .chatIcon {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(8, 9, 15, 0.7);
   color: white;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all 0.2s ease;
+  z-index: 10;
+  backdrop-filter: blur(6px);
 }
 
-.buttonContainer .CallEndIcon {
-  color: red;
+.video-tile:hover .pinButton,
+.pinButton.pinned {
+  opacity: 1;
+  transform: scale(1);
 }
 
-.buttonContainer .MuiSvgIcon-root {
-  font-size: 2.5rem;
+.pinButton:hover {
+  background: rgba(62, 198, 224, 0.25);
+  border-color: #3ec6e0;
 }
 
-/* =========================
-   CHAT PANEL
-========================= */
+.pinButton.pinned {
+  background: #2563eb;
+  border-color: #3b82f6;
+}
 
-.chat-room {
+/* =========================================================
+   BOTTOM FLOATING CONTROL BAR
+========================================================= */
+.buttonContainer {
   position: fixed;
-
-  top: 5vh;
-  right: 20px;
-
-  width: min(360px, 30vw);
-  height: 90vh;
-
-  background: white;
-
-  border-radius: 12px;
-
-  padding: 20px;
-
-  box-sizing: border-box;
-
-  z-index: 1100;
-
-  box-shadow: 0 8px 35px rgba(0, 0, 0, 0.45);
-
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 1000;
   display: flex;
-  flex-direction: column;
-
-  overflow: hidden;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  background: rgba(15, 20, 32, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px);
 }
 
-/* =========================
-   CHAT CONTENT
-========================= */
-
-.chatContainer {
+.ctrl-btn {
   position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
 
-  width: 100%;
+.ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateY(-2px);
+}
+
+.ctrl-btn.is-off {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #f87171;
+}
+
+.ctrl-btn.is-off:hover {
+  background: rgba(239, 68, 68, 0.28);
+}
+
+.ctrl-btn.is-active {
+  background: rgba(62, 198, 224, 0.2);
+  border-color: #3ec6e0;
+  color: #3ec6e0;
+}
+
+.ctrl-btn.end-call-btn {
+  width: 56px;
+  border-radius: 999px;
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+.ctrl-btn.end-call-btn:hover {
+  background: #dc2626;
+}
+
+.chat-unread-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #6c63ff;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #08090f;
+}
+
+/* =========================================================
+   DARK GLASSMORPHIC CHAT DRAWER
+========================================================= */
+.chat-room {
+  width: 360px;
   height: 100%;
-
+  flex-shrink: 0;
+  background: rgba(15, 20, 32, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  animation: chatSlideIn 0.22s ease;
+}
 
+@keyframes chatSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.chat-header {
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chat-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.chat-close-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.chat-close-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+
+.chattingDisplay {
+  flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-empty-state {
+  margin: auto;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.chat-bubble-wrap {
+  display: flex;
+  flex-direction: column;
+  max-width: 85%;
+}
+
+.chat-bubble-wrap.is-mine {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.chat-bubble-wrap.is-other {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.chat-sender-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 3px;
+  padding: 0 4px;
+}
+
+.chat-bubble {
+  padding: 9px 13px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.chat-bubble-wrap.is-mine .chat-bubble {
+  background: linear-gradient(135deg, #6c63ff 0%, #2563eb 100%);
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-bubble-wrap.is-other .chat-bubble {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+  border-bottom-left-radius: 4px;
 }
 
 .chattingArea {
-  position: absolute;
-
-  left: 0;
-  right: 0;
-  bottom: 0;
-
+  padding: 12px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
-
   gap: 8px;
+  background: rgba(8, 9, 15, 0.6);
 }
 
-.meetRoom.chat-open {
-  padding-right: calc(360px + 40px);
+.chat-native-input {
+  flex: 1;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f8fafc;
+  font-size: 13.5px;
+  font-family: inherit;
+  outline: none;
 }
 
-.meetRoom.chat-open .mainVideoWrapper,
-.meetRoom.chat-open .remoteStrip {
-  max-width: 760px;
+.chat-native-input:focus {
+  border-color: #3ec6e0;
 }
 
-/* ── Spotlight layout ── */
-.mainVideoWrapper.spotlight {
-  width: min(100%, 960px);
-  aspect-ratio: 16 / 9;
-}
-
-.remoteStrip {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 8px;
-  scrollbar-width: none;
-}
-
-.remoteStrip::-webkit-scrollbar {
-  display: none;
-}
-
-.remoteCard {
-  width: 160px;
-  flex-shrink: 0;
+.chat-send-btn {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #6c63ff 0%, #3ec6e0 100%);
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 600;
   cursor: pointer;
-  transition: outline 0.15s;
 }
 
-.remoteCard:hover {
-  outline: 2px solid rgba(255, 255, 255, 0.3);
-  outline-offset: 2px;
+.chat-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
-.remoteCard.pinned {
-  outline: 2px solid #6C63FF;
-  outline-offset: 2px;
-}
-
-.self-card {
-  opacity: 0.85;
-  cursor: default;
-}
-
+/* =========================================================
+   MEETING CODE MODAL
+========================================================= */
 .meetingCodeOverlay {
   position: fixed;
   inset: 0;
-  z-index: 9999;
-
+  z-index: 5000;
   display: flex;
   align-items: center;
   justify-content: center;
-
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(5px);
-
   padding: 20px;
+  background: rgba(4, 6, 12, 0.8);
+  backdrop-filter: blur(8px);
 }
 
 .meetingCodeModal {
   position: relative;
-
-  width: 100%;
-  max-width: 480px;
-
-  background: #ffffff;
-  border-radius: 18px;
-
-  padding: 32px;
-
-  box-sizing: border-box;
-
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  width: min(440px, 100%);
+  padding: 28px;
+  background: #0f1420;
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+  text-align: center;
 }
 
 .meetingCodeModal h2 {
-  margin: 0 0 10px;
-
-  font-size: 26px;
-  color: #202124;
+  margin: 0 0 8px;
+  font-size: 1.4rem;
 }
 
 .meetingCodeDescription {
-  margin: 0 0 24px;
-
-  color: #5f6368;
-  font-size: 15px;
-  line-height: 1.5;
+  margin: 0 0 18px;
+  color: #94a3b8;
+  font-size: 0.92rem;
 }
 
 .closeMeetingCode {
   position: absolute;
-
-  top: 12px;
-  right: 15px;
-
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
   border: none;
-  background: transparent;
-
-  font-size: 28px;
-  color: #5f6368;
-
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  font-size: 18px;
   cursor: pointer;
 }
 
@@ -379,256 +600,66 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-
-  gap: 12px;
-
-  border: 1px solid #dadce0;
-  border-radius: 10px;
-
-  padding: 8px 8px 8px 16px;
-
-  background: #f8f9fa;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
 }
 
 .meetingCodeBox span {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 1px;
-
-  color: #202124;
-
-  word-break: break-all;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #3ec6e0;
+  letter-spacing: 0.04em;
 }
 
 .meetingCodeBox button {
-  flex-shrink: 0;
-
   border: none;
+  padding: 8px 14px;
   border-radius: 8px;
-
-  padding: 10px 16px;
-
-  background: #1a73e8;
+  background: #2563eb;
   color: white;
-
-  font-size: 14px;
-  font-weight: 600;
-
   cursor: pointer;
-}
-
-.meetingCodeBox button:hover {
-  background: #1765cc;
-}
-
-.meetingCodeHint {
-  margin: 14px 0 24px;
-
-  font-size: 13px;
-  color: #80868b;
+  font-weight: 600;
 }
 
 .continueMeetingButton {
   width: 100%;
-
+  padding: 12px;
   border: none;
-  border-radius: 10px;
-
-  padding: 13px;
-
-  background: #202124;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6c63ff 0%, #3ec6e0 100%);
   color: white;
-
-  font-size: 15px;
+  font-size: 0.95rem;
   font-weight: 600;
-
   cursor: pointer;
 }
 
-.continueMeetingButton:hover {
-  background: #303134;
-}
-
-@media (max-width: 500px) {
-  .meetingCodeModal {
-    padding: 24px 20px;
-    border-radius: 16px;
-  }
-
-  .meetingCodeModal h2 {
-    font-size: 22px;
-  }
-
-  .meetingCodeBox {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .meetingCodeBox span {
-    padding: 8px 4px;
-    text-align: center;
-  }
-
-  .meetingCodeBox button {
-    width: 100%;
-  }
-}
-
-@media (max-width: 600px) {
-  .mainVideoWrapper.spotlight {
-    width: 100%;
-  }
-
-  .remoteCard {
-    width: 110px;
-  }
-}
-
-/* =========================
-   RESPONSIVE
-========================= */
-
+/* =========================================================
+   MOBILE RESPONSIVE
+========================================================= */
 @media (max-width: 900px) {
-  .chat-room {
-    width: min(400px, calc(100vw - 40px));
-    right: 20px;
+  .meet-workspace {
+    padding: 10px 10px 84px;
   }
 
-  .meetRoom.chat-open {
-    padding-right: 16px;
-  }
-
-  .meetRoom.chat-open .mainVideoWrapper,
-  .meetRoom.chat-open .remoteStrip {
-    max-width: 100%;
-  }
-}
-
-@media (max-width: 600px) {
-  .meetRoom {
-    padding: 10px;
-    padding-bottom: 90px;
-    gap: 10px;
-  }
-
-  .mainVideoWrapper {
-    width: 100%;
-  }
-
-  .remoteCard {
-    width: calc(50% - 6px);
-  }
-
-  .buttonContainer {
-    bottom: 12px;
-    gap: 4px;
-    padding: 8px 12px;
-  }
-
-  .buttonContainer .MuiSvgIcon-root {
-    font-size: 2rem;
+  .video-grid.count-2,
+  .video-grid.count-3,
+  .video-grid.count-4 {
+    grid-template-columns: 1fr;
   }
 
   .chat-room {
-    top: 10px;
-    right: 10px;
-
-    width: calc(100vw - 20px);
-    height: calc(100vh - 20px);
-  }
-}
-
-@media (max-width: 1024px) {
-  .mainVideoWrapper {
-    width: min(100%, 720px);
+    position: fixed;
+    inset: 10px 10px 84px 10px;
+    width: auto;
+    height: auto;
+    z-index: 1200;
   }
 
-  .meetRoom.chat-open {
-    padding-right: calc(320px + 30px);
-  }
-
-  .chat-room {
-    width: min(320px, 30vw);
-  }
-
-  .meetRoom.chat-open .mainVideoWrapper,
-  .meetRoom.chat-open .remoteStrip {
-    max-width: 620px;
-  }
-}
-
-@media (max-width: 900px) {
-  .chat-room {
-    width: min(400px, calc(100vw - 40px));
-    right: 20px;
-  }
-
-  .meetRoom.chat-open {
-    padding-right: 16px;
-  }
-
-  .meetRoom.chat-open .mainVideoWrapper,
-  .meetRoom.chat-open .remoteStrip {
-    max-width: 100%;
-  }
-}
-
-@media (max-width: 600px) {
-  .meetRoom {
-    padding: 10px;
-    padding-bottom: 90px;
-    gap: 10px;
-  }
-
-  .mainVideoWrapper {
-    width: 100%;
-    border-radius: 8px;
-  }
-
-  .remoteCard {
-    width: calc(50% - 6px);
-  }
-
-  .remoteStrip {
-    gap: 8px;
-  }
-
-  .buttonContainer {
-    bottom: 12px;
-    gap: 4px;
-    padding: 8px 12px;
-    border-radius: 40px;
-  }
-
-  .buttonContainer .MuiSvgIcon-root {
-    font-size: 1.8rem;
-  }
-
-  .chat-room {
-    top: 10px;
-    right: 10px;
-    width: calc(100vw - 20px);
-    height: calc(100vh - 20px);
-    border-radius: 10px;
-  }
-
-  .nameTag {
-    font-size: 11px;
-    padding: 2px 6px;
-  }
-}
-
-@media (max-width: 400px) {
-  .remoteCard {
-    width: 100%;
-  }
-
-  .buttonContainer {
-    gap: 2px;
-    padding: 6px 10px;
-  }
-
-  .buttonContainer .MuiSvgIcon-root {
-    font-size: 1.5rem;
+  .pinButton {
+    opacity: 1;
   }
 }
