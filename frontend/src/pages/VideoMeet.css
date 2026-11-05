@@ -1,0 +1,1092 @@
+/* ── Pre-Join Lobby & Waiting Room ── */
+.vm-lobby-wrapper {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  background:
+    radial-gradient(ellipse 70% 55% at 15% 15%, rgba(108, 99, 255, 0.16) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 80%, rgba(62, 198, 224, 0.12) 0%, transparent 60%),
+    #07090e;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.vm-lobby-container {
+  width: 100%;
+  max-width: 980px;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.vm-lobby-preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: #0e1320;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+}
+
+.vm-lobby-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.video-hidden {
+  display: none !important;
+}
+
+.vm-lobby-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.vm-avatar-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6c63ff 0%, #3ec6e0 100%);
+  color: #ffffff;
+  font-size: 1.35rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(108, 99, 255, 0.4);
+}
+
+.vm-avatar-circle.large {
+  width: 80px;
+  height: 80px;
+  font-size: 1.6rem;
+}
+
+.vm-lobby-media-toggles {
+  position: absolute;
+  bottom: 16px;
+  display: flex;
+  gap: 12px;
+}
+
+.vm-ctrl-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(14, 19, 32, 0.85);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+}
+
+.vm-ctrl-btn.off {
+  background: #ef4444;
+  border-color: #ef4444;
+}
+
+.vm-lobby-card {
+  background: rgba(14, 19, 32, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  padding: 2.25rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+}
+
+.vm-lobby-badge {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(62, 198, 224, 0.12);
+  border: 1px solid rgba(62, 198, 224, 0.3);
+  color: #7ee8f8;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.vm-lobby-card h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.vm-lobby-card p {
+  color: #94a3b8;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin-bottom: 1.5rem;
+}
+
+.vm-lobby-alert {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  margin-bottom: 1rem;
+}
+
+.vm-lobby-label {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin-bottom: 0.45rem;
+}
+
+.vm-lobby-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  font-size: 0.96rem;
+  outline: none;
+  margin-bottom: 1.25rem;
+}
+
+.vm-lobby-input:focus {
+  border-color: #3ec6e0;
+}
+
+.vm-lobby-join-btn {
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6c63ff 0%, #3ec6e0 100%);
+  color: #ffffff;
+  font-size: 0.98rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(108, 99, 255, 0.35);
+}
+
+.vm-lobby-join-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Waiting Card */
+.vm-waiting-card {
+  max-width: 440px;
+  width: 100%;
+  background: rgba(14, 19, 32, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.vm-waiting-spinner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 3px solid rgba(62, 198, 224, 0.2);
+  border-top-color: #3ec6e0;
+  animation: vm-spin 0.9s linear infinite;
+}
+
+@keyframes vm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.vm-waiting-card p {
+  color: #94a3b8;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.vm-btn-leave-lobby {
+  margin-top: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.14);
+  color: #f87171;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Live Meeting Room Container ── */
+.vm-room-container {
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #07090e;
+  color: #ffffff;
+}
+
+.vm-toast-banner {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3000;
+  background: rgba(14, 19, 32, 0.95);
+  border: 1px solid #3ec6e0;
+  color: #ffffff;
+  padding: 0.65rem 1.25rem;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+
+.vm-room-header {
+  height: 56px;
+  padding: 0 1.25rem;
+  background: rgba(10, 14, 24, 0.92);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.vm-room-info {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.vm-brand-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 10px #22c55e;
+}
+
+.vm-room-title {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.vm-room-code-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-family: monospace;
+  cursor: pointer;
+}
+
+.copied-tag {
+  color: #4ade80;
+  font-family: sans-serif;
+  font-weight: 600;
+}
+
+.vm-role-pill {
+  background: linear-gradient(135deg, rgba(108, 99, 255, 0.25), rgba(62, 198, 224, 0.25));
+  border: 1px solid rgba(62, 198, 224, 0.4);
+  color: #7ee8f8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.vm-waiting-alert-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(108, 99, 255, 0.16);
+  border: 1px solid rgba(108, 99, 255, 0.4);
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+}
+
+.vm-admit-quick-btn,
+.vm-view-waiting-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vm-admit-quick-btn {
+  background: #22c55e;
+  color: #052e16;
+}
+
+.vm-view-waiting-btn {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+/* ── Main Stage & Dynamic Video Grid ── */
+.vm-main-stage {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.vm-video-grid {
+  flex: 1;
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+  align-content: center;
+  justify-content: center;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.vm-video-grid.count-1 {
+  grid-template-columns: minmax(280px, 860px);
+}
+
+.vm-video-grid.count-2 {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.vm-video-grid.count-3,
+.vm-video-grid.count-4 {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.vm-video-grid.count-5,
+.vm-video-grid.count-6 {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.vm-video-tile {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  max-height: calc(100vh - 170px);
+  background: #111827;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.vm-video-tile.organizer-tile {
+  border-color: rgba(62, 198, 224, 0.45);
+  box-shadow: 0 0 0 1px rgba(62, 198, 224, 0.2), 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.vm-video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.local-tile .vm-video-element {
+  transform: scaleX(-1);
+}
+
+.vm-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, rgba(108, 99, 255, 0.15) 0%, #0b0f19 75%);
+}
+
+.vm-tile-top-bar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 2;
+}
+
+.vm-status-pill {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  background: rgba(7, 9, 14, 0.75);
+  backdrop-filter: blur(8px);
+}
+
+.vm-status-pill.mic-off {
+  background: rgba(239, 68, 68, 0.85);
+  color: #ffffff;
+}
+
+.vm-tile-host-actions {
+  display: flex;
+  gap: 4px;
+  background: rgba(7, 9, 14, 0.82);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.vm-mini-host-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.vm-mini-host-btn:hover {
+  background: rgba(62, 198, 224, 0.25);
+}
+
+.vm-mini-host-btn.danger:hover {
+  background: #ef4444;
+}
+
+/* Participant Name & Organizer Label on Video Tile */
+.vm-tile-label {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 2;
+  background: rgba(7, 9, 14, 0.78);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 12px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.vm-participant-name {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.vm-organizer-sub {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #3ec6e0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+/* ── Side Drawer (People, Host Controls, Chat) ── */
+.vm-side-drawer {
+  width: 360px;
+  background: #0b0f19;
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.vm-drawer-tabs {
+  display: flex;
+  align-items: center;
+  padding: 0.65rem;
+  gap: 0.35rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vm-drawer-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0.5rem 0.4rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vm-drawer-tab.active {
+  background: rgba(108, 99, 255, 0.2);
+  color: #ffffff;
+  border: 1px solid rgba(108, 99, 255, 0.4);
+}
+
+.vm-tab-badge {
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.vm-drawer-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.vm-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.vm-bulk-btn {
+  width: 100%;
+  padding: 0.6rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.vm-participant-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.vm-participant-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.vm-participant-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6c63ff, #3ec6e0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.vm-participant-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.vm-p-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vm-p-role {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.vm-p-role.is-org {
+  color: #3ec6e0;
+  font-weight: 700;
+}
+
+.vm-participant-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vm-p-icon {
+  display: inline-flex;
+  color: #94a3b8;
+}
+
+.vm-p-icon.off {
+  color: #ef4444;
+}
+
+.vm-p-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.vm-p-action-btn.danger {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Host Controls Section */
+.vm-host-section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.vm-host-section h3 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.vm-host-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vm-text-btn {
+  background: none;
+  border: none;
+  color: #3ec6e0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vm-empty-hint {
+  font-size: 0.82rem;
+  color: #64748b;
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+.vm-waiting-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.vm-waiting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.65rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+}
+
+.vm-waiting-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.vm-waiting-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.vm-approve-btn,
+.vm-deny-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vm-approve-btn {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.vm-deny-btn {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.vm-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.vm-switch-title {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.vm-switch-desc {
+  display: block;
+  font-size: 0.74rem;
+  color: #94a3b8;
+}
+
+.vm-switch-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #3ec6e0;
+  cursor: pointer;
+}
+
+.vm-chat-mode-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.25rem;
+}
+
+.vm-select,
+.vm-recipient-select {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #111827;
+  color: #ffffff;
+  font-size: 0.82rem;
+  outline: none;
+}
+
+.vm-end-all-btn {
+  width: 100%;
+  padding: 0.65rem;
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.vm-end-all-btn:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* ── Chat Panel ── */
+.vm-chat-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.vm-chat-mode-banner {
+  padding: 0.45rem 0.75rem;
+  background: rgba(62, 198, 224, 0.08);
+  border-bottom: 1px solid rgba(62, 198, 224, 0.2);
+  color: #7ee8f8;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.vm-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.vm-chat-bubble {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
+}
+
+.vm-chat-bubble.mine {
+  background: rgba(108, 99, 255, 0.16);
+  border-color: rgba(108, 99, 255, 0.35);
+}
+
+.vm-chat-bubble.direct-msg {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.vm-chat-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.vm-chat-sender {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vm-chat-org-tag {
+  background: rgba(62, 198, 224, 0.2);
+  color: #7ee8f8;
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.vm-direct-pill {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  font-size: 0.66rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.vm-chat-time {
+  margin-left: auto;
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.vm-chat-text {
+  font-size: 0.86rem;
+  color: #e2e8f0;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.vm-chat-form {
+  padding: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.vm-chat-recipient-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.76rem;
+  color: #94a3b8;
+}
+
+.vm-chat-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.vm-chat-input {
+  flex: 1;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  font-size: 0.86rem;
+  outline: none;
+}
+
+.vm-chat-send-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #6c63ff, #3ec6e0);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.vm-chat-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Bottom Control Dock ── */
+.vm-control-dock {
+  height: 76px;
+  padding: 0 1rem;
+  background: rgba(10, 14, 24, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+.vm-dock-btn {
+  min-width: 72px;
+  height: 52px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.vm-dock-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #3ec6e0;
+}
+
+.vm-dock-btn.off {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.vm-dock-btn.locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.vm-dock-btn.panel-open,
+.vm-dock-btn.active-share {
+  background: rgba(62, 198, 224, 0.18);
+  border-color: #3ec6e0;
+  color: #7ee8f8;
+}
+
+.vm-dock-btn.host-dock-btn {
+  border-color: rgba(108, 99, 255, 0.45);
+}
+
+.vm-dock-btn.leave-btn {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+.vm-badge-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.vm-unread-badge {
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+}
+
+/* ── Mobile Responsive Rules ── */
+@media (max-width: 820px) {
+  .vm-lobby-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .vm-side-drawer {
+    position: fixed;
+    inset: 56px 0 76px 0;
+    width: 100%;
+    z-index: 2500;
+  }
+
+  .vm-control-dock {
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  .vm-dock-btn {
+    min-width: 62px;
+    padding: 0 8px;
+    font-size: 0.65rem;
+  }
+}

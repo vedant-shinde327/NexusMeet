@@ -128,6 +128,16 @@ export const AuthProvider = ({ children }) => {
     return request.data;
   };
 
+  const changeUserPassword = async (currentPassword, newPassword) => {
+    const token = localStorage.getItem("token");
+    const response = await client.put("/change_password", {
+      token,
+      currentPassword,
+      newPassword,
+    });
+    return response.data;
+  };
+
   const data = {
     userData,
     setUserData,
@@ -138,6 +148,7 @@ export const AuthProvider = ({ children }) => {
     handleGoogleLogin,
     getUserProfile,
     updateUserProfile,
+    changeUserPassword,
   };
 
   return <AuthContext.Provider value={data}>{children}</AuthContext.Provider>;

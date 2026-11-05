@@ -1,582 +1,689 @@
+import React, { useContext, useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import io from "socket.io-client";
+import VideocamIcon from "@mui/icons-material/Videocam";
+import VideocamOffIcon from "@mui/icons-material/VideocamOff";
 import CallEndIcon from "@mui/icons-material/CallEnd";
-import ChatIcon from "@mui/icons-material/Chat";
 import MicIcon from "@mui/icons-material/Mic";
 import MicOffIcon from "@mui/icons-material/MicOff";
 import ScreenShareIcon from "@mui/icons-material/ScreenShare";
 import StopScreenShareIcon from "@mui/icons-material/StopScreenShare";
-import VideocamIcon from "@mui/icons-material/Videocam";
-import VideocamOffIcon from "@mui/icons-material/VideocamOff";
-import PushPinIcon from "@mui/icons-material/PushPin";
-import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
+import ChatIcon from "@mui/icons-material/Chat";
+import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
+import SecurityIcon from "@mui/icons-material/Security";
+import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
+import LockIcon from "@mui/icons-material/Lock";
+import SendIcon from "@mui/icons-material/Send";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
-import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { io } from "socket.io-client";
+import AuthContext from "../contexts/AuthContext";
 import server from "../environment";
-import "../styles/videoComponent.css";
-import "./lobby.css";
-
-const server_url = server;
+import "./VideoMeet.css";
 
 const peerConfigConnections = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-  ],
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
 };
 
-/* VideoTile always attaches the latest stream and forces playback of audio + video */
-function VideoTile({
-  stream,
-  label,
-  muted = false,
-  isLocal = false,
-  isScreen = false,
-  isPinned = false,
-  showAvatar = false,
-  onPin,
+// Dedicated child component for remote video tiles so streams attach reliably
+function RemoteVideoTile({
+  peer,
+  participantMeta,
+  isViewerOrganizer,
+  onModerate,
+  onDirectMessage,
 }) {
-  const videoEl = useRef(null);
+  const videoRef = useRef(null);
 
   useEffect(() => {
-    const el = videoEl.current;
-    if (!el || !stream) return;
+    if (videoRef.current && peer.stream) {
+      videoRef.current.srcObject = peer.stream;
+    }
+  }, [peer.stream]);
 
-    el.srcObject = stream;
-    el.play().catch((err) => {
-      console.warn("Video autoplay blocked or pending:", err);
-    });
-  }, [stream]);
+  const name = participantMeta?.name || "Participant";
+  const isTileOrganizer = Boolean(participantMeta?.isOrganizer);
+  const micOn = participantMeta?.audio !== false;
+  const camOn = participantMeta?.video !== false;
 
-  const initial = (label || "U").trim().charAt(0).toUpperCase();
+  const getInitials = (fullName) => {
+    const parts = (fullName || "P").trim().split(" ");
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return fullName.substring(0, 2).toUpperCase();
+  };
 
   return (
-    <div
-      className={`video-tile ${isLocal ? "is-local" : ""} ${
-        isScreen ? "is-screen" : ""
-      } ${isPinned ? "is-pinned" : ""}`}
-    >
-      <video ref={videoEl} autoPlay muted={muted} playsInline />
+    <div className={`vm-video-tile ${isTileOrganizer ? "organizer-tile" : ""}`}>
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        className={`vm-video-element ${!camOn ? "video-hidden" : ""}`}
+      />
 
-      {showAvatar && (
-        <div className="tile-avatar-fallback">
-          <div className="tile-avatar-circle">{initial}</div>
-          <span style={{ fontSize: "13px", color: "#94a3b8" }}>Camera Off</span>
+      {!camOn && (
+        <div className="vm-avatar-fallback">
+          <div className="vm-avatar-circle">{getInitials(name)}</div>
         </div>
       )}
 
-      {onPin && (
-        <button
-          type="button"
-          className={`pinButton ${isPinned ? "pinned" : ""}`}
-          onClick={onPin}
-          title={isPinned ? "Unpin" : "Pin to spotlight"}
+      {/* Top-Right Status Icons & Quick Host Controls */}
+      <div className="vm-tile-top-bar">
+        <span
+          className={`vm-status-pill ${micOn ? "mic-on" : "mic-off"}`}
+          title={micOn ? "Microphone On" : "Microphone Muted"}
         >
-          {isPinned ? (
-            <PushPinIcon fontSize="small" />
+          {micOn ? (
+            <MicIcon fontSize="inherit" />
           ) : (
-            <PushPinOutlinedIcon fontSize="small" />
+            <MicOffIcon fontSize="inherit" />
           )}
-        </button>
-      )}
+        </span>
 
-      <span className="nameTag">{label}</span>
+        {isViewerOrganizer && !isTileOrganizer && (
+          <div className="vm-tile-host-actions">
+            {micOn && (
+              <button
+                type="button"
+                className="vm-mini-host-btn"
+                title="Mute Participant"
+                onClick={() => onModerate(peer.socketId, "mute-mic")}
+              >
+                <MicOffIcon fontSize="inherit" />
+              </button>
+            )}
+            {camOn && (
+              <button
+                type="button"
+                className="vm-mini-host-btn"
+                title="Turn Off Camera"
+                onClick={() => onModerate(peer.socketId, "disable-cam")}
+              >
+                <VideocamOffIcon fontSize="inherit" />
+              </button>
+            )}
+            <button
+              type="button"
+              className="vm-mini-host-btn"
+              title="Direct Message"
+              onClick={() => onDirectMessage(peer.socketId)}
+            >
+              <ChatIcon fontSize="inherit" />
+            </button>
+            <button
+              type="button"
+              className="vm-mini-host-btn danger"
+              title="Remove from Meeting"
+              onClick={() => onModerate(peer.socketId, "kick")}
+            >
+              <PersonRemoveIcon fontSize="inherit" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Name & Organizer Label */}
+      <div className="vm-tile-label">
+        <span className="vm-participant-name">{name}</span>
+        {isTileOrganizer && <span className="vm-organizer-sub">Organizer</span>}
+      </div>
     </div>
   );
 }
 
-function VideoMeet() {
-  const routeTo = useNavigate();
-  const { meetingCode, url } = useParams();
-  const currentRoomCode = meetingCode || url || "default-room";
-
+export default function VideoMeetComponent() {
+  const navigate = useNavigate();
   const location = useLocation();
-  const isNewMeeting = location.state?.isNewMeeting === true;
+  const { userData } = useContext(AuthContext);
 
-  const [pinnedVideo, setPinnedVideo] = useState(null);
-  const [showMeetingCode, setShowMeetingCode] = useState(false);
-  const [copied, setCopied] = useState(false);
-
+  // Refs for WebRTC & Socket state
   const socketRef = useRef(null);
   const socketIdRef = useRef(null);
-  const lobbyVideoRef = useRef(null);
-  const chatEndRef = useRef(null);
+  const localVideoref = useRef(null);
+  const localStreamRef = useRef(null);
+  const connectionsRef = useRef({});
 
-  const connections = useRef({});
-  const remoteStreamsRef = useRef({});
-  const iceCandidateQueue = useRef({});
+  // Pre-filling logged-in user's name
+  const defaultName = userData?.name || localStorage.getItem("userName") || "";
+  const [username, setUsername] = useState(defaultName);
+  const [askForUsername, setAskForUsername] = useState(true);
+  const [waitingForApproval, setWaitingForApproval] = useState(false);
+  const [deniedMessage, setDeniedMessage] = useState("");
 
-  const [localStreamState, setLocalStreamState] = useState(null);
-  const [micReady, setMicReady] = useState(false);
-  const [camReady, setCamReady] = useState(false);
-
-  const [videoAvailable, setVideoAvailable] = useState(false);
-  const [audioAvailable, setAudioAvailable] = useState(false);
-
-  const [video, setVideo] = useState(false);
-  const [audio, setAudio] = useState(false);
-
-  const [screenAvailable, setScreenAvailable] = useState(false);
+  // Hardware availability & active states
+  const [videoAvailable, setVideoAvailable] = useState(true);
+  const [audioAvailable, setAudioAvailable] = useState(true);
+  const [video, setVideo] = useState(true);
+  const [audio, setAudio] = useState(true);
   const [screen, setScreen] = useState(false);
+  const [screenAvailable, setScreenAvailable] = useState(false);
 
-  const [messages, setMessages] = useState([]);
-  const [message, setMessage] = useState("");
-  const [newMessages, setNewMessages] = useState(0);
+  // Room & Organizer State
+  const [isOrganizer, setIsOrganizer] = useState(
+    Boolean(location.state?.isNewMeeting),
+  );
+  const [organizerSocketId, setOrganizerSocketId] = useState(null);
+  const [participants, setParticipants] = useState([]);
+  const [waitingList, setWaitingList] = useState([]);
+  const [permissions, setPermissions] = useState({
+    allowMic: true,
+    allowCam: true,
+    allowScreen: true,
+    chatMode: "everyone", // "everyone" | "host_only" | "disabled"
+    waitingRoomEnabled: true,
+  });
 
-  const [showModal, setModal] = useState(false);
+  // Remote Video Streams
   const [videos, setVideos] = useState([]);
 
-  const [askForUsername, setAskForUsername] = useState(true);
-  const [username, setUsername] = useState("");
+  // Side Panels & Notifications
+  const [activeSidePanel, setActiveSidePanel] = useState(null); // "chat" | "people" | "host" | null
+  const [messages, setMessages] = useState([]);
+  const [message, setMessage] = useState("");
+  const [chatTarget, setChatTarget] = useState("everyone"); // "everyone" or socketId
+  const [newMessages, setNewMessages] = useState(0);
+  const [toastMessage, setToastMessage] = useState("");
+  const [copiedCode, setCopiedCode] = useState(false);
 
-  /* Fallback silent audio track */
-  const silence = useCallback(() => {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = ctx.createOscillator();
-    const dst = oscillator.connect(ctx.createMediaStreamDestination());
-    oscillator.start();
-    return Object.assign(dst.stream.getAudioTracks()[0], { enabled: false });
-  }, []);
-
-  /* Fallback black video track */
-  const blackScreen = useCallback(({ width = 640, height = 480 } = {}) => {
-    const canvas = Object.assign(document.createElement("canvas"), {
-      width,
-      height,
-    });
-    canvas.getContext("2d").fillRect(0, 0, width, height);
-    const stream = canvas.captureStream(15);
-    return Object.assign(stream.getVideoTracks()[0], { enabled: false });
-  }, []);
-
-  /* Attach stream to Lobby video preview */
+  const activeSidePanelRef = useRef(activeSidePanel);
   useEffect(() => {
-    if (askForUsername && lobbyVideoRef.current && localStreamState) {
-      lobbyVideoRef.current.srcObject = localStreamState;
-      lobbyVideoRef.current.play().catch(() => {});
+    activeSidePanelRef.current = activeSidePanel;
+    if (activeSidePanel === "chat") {
+      setNewMessages(0);
     }
-  }, [askForUsername, localStreamState]);
+  }, [activeSidePanel]);
 
-  /* Auto-scroll chat to bottom */
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((prev) => (prev === msg ? "" : prev));
+    }, 4000);
+  };
+
+  // Sync username if userData loads asynchronously
   useEffect(() => {
-    if (showModal && chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    if (!username && (userData?.name || localStorage.getItem("userName"))) {
+      setUsername(userData?.name || localStorage.getItem("userName") || "");
     }
-  }, [messages, showModal]);
+  }, [userData]);
 
-  /* Request camera + mic together in one call, with fallback if one device is busy */
-  const getPermissions = useCallback(async () => {
-    if (navigator.mediaDevices?.getDisplayMedia) {
-      setScreenAvailable(true);
-    }
-
-    let videoTrack = null;
-    let audioTrack = null;
-
-    try {
-      const combined = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-      videoTrack = combined.getVideoTracks()[0] || null;
-      audioTrack = combined.getAudioTracks()[0] || null;
-    } catch {
+  // 1. Initialize Local Camera & Microphone Preview for Lobby
+  useEffect(() => {
+    const initPermissions = async () => {
       try {
-        const vOnly = await navigator.mediaDevices.getUserMedia({
+        setScreenAvailable(Boolean(navigator.mediaDevices.getDisplayMedia));
+        const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
-        });
-        videoTrack = vOnly.getVideoTracks()[0] || null;
-      } catch {
-        videoTrack = null;
-      }
-
-      try {
-        const aOnly = await navigator.mediaDevices.getUserMedia({
           audio: true,
         });
-        audioTrack = aOnly.getAudioTracks()[0] || null;
-      } catch {
-        audioTrack = null;
+        setVideoAvailable(true);
+        setAudioAvailable(true);
+        localStreamRef.current = stream;
+        window.localStream = stream;
+        if (localVideoref.current) {
+          localVideoref.current.srcObject = stream;
+        }
+      } catch (err) {
+        // Fallback if camera or mic is individually blocked
+        try {
+          const audioOnly = await navigator.mediaDevices.getUserMedia({
+            video: false,
+            audio: true,
+          });
+          setVideoAvailable(false);
+          setVideo(false);
+          setAudioAvailable(true);
+          localStreamRef.current = audioOnly;
+          window.localStream = audioOnly;
+        } catch {
+          setVideoAvailable(false);
+          setAudioAvailable(false);
+          setVideo(false);
+          setAudio(false);
+        }
       }
-    }
+    };
 
-    const hasVideo = Boolean(videoTrack);
-    const hasAudio = Boolean(audioTrack);
-
-    setVideoAvailable(hasVideo);
-    setAudioAvailable(hasAudio);
-    setCamReady(hasVideo);
-    setMicReady(hasAudio);
-    setVideo(hasVideo);
-    setAudio(hasAudio);
-
-    const tracks = [];
-    if (videoTrack) tracks.push(videoTrack);
-    if (audioTrack) tracks.push(audioTrack);
-
-    const finalStream = new MediaStream(tracks);
-    window.localStream = finalStream;
-    setLocalStreamState(finalStream);
-  }, []);
-
-  useEffect(() => {
-    if (isNewMeeting && currentRoomCode) {
-      setShowMeetingCode(true);
-    }
-  }, [isNewMeeting, currentRoomCode]);
-
-  useEffect(() => {
-    getPermissions();
+    initPermissions();
 
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
-      Object.values(connections.current).forEach((pc) => pc.close());
-      connections.current = {};
-      remoteStreamsRef.current = {};
-      iceCandidateQueue.current = {};
-      if (window.localStream) {
-        window.localStream.getTracks().forEach((track) => track.stop());
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((t) => t.stop());
       }
     };
-  }, [getPermissions]);
+  }, []);
 
-  /* Flush any ICE candidates that arrived before remoteDescription was set */
-  const flushIceQueue = async (peerId, pc) => {
-    const queue = iceCandidateQueue.current[peerId];
-    if (!queue || queue.length === 0) return;
-
-    while (queue.length > 0) {
-      const candidate = queue.shift();
-      try {
-        await pc.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (e) {
-        console.warn("Failed to add queued ICE candidate:", e);
-      }
+  // Re-attach local video stream whenever user switches from Lobby to Meeting stage
+  useEffect(() => {
+    if (
+      !askForUsername &&
+      !waitingForApproval &&
+      localVideoref.current &&
+      localStreamRef.current
+    ) {
+      localVideoref.current.srcObject = localStreamRef.current;
     }
+  }, [askForUsername, waitingForApproval, video]);
+
+  // Helper: Create silent/black fallback stream if tracks are off
+  const createSilenceTrack = () => {
+    const ctx = new AudioContext();
+    const oscillator = ctx.createOscillator();
+    const dst = oscillator.connect(ctx.createMediaStreamDestination());
+    oscillator.start();
+    ctx.resume();
+    return Object.assign(dst.stream.getAudioTracks()[0], { enabled: false });
   };
 
-  /* Create or return existing RTCPeerConnection for a remote socket ID */
-  const createPeerConnection = useCallback(
-    (socketListId) => {
-      if (connections.current[socketListId]) {
-        return connections.current[socketListId];
-      }
+  const createBlackTrack = ({ width = 640, height = 480 } = {}) => {
+    const canvas = Object.assign(document.createElement("canvas"), {
+      width,
+      height,
+    });
+    canvas.getContext("2d").fillRect(0, 0, width, height);
+    const stream = canvas.captureStream();
+    return Object.assign(stream.getVideoTracks()[0], { enabled: false });
+  };
 
-      const pc = new RTCPeerConnection(peerConfigConnections);
-      connections.current[socketListId] = pc;
-      iceCandidateQueue.current[socketListId] = [];
+  // Replace tracks on all existing RTCPeerConnections
+  const syncStreamToPeers = (newStream) => {
+    Object.entries(connectionsRef.current).forEach(([id, pc]) => {
+      if (id === socketIdRef.current) return;
 
-      pc.onicecandidate = (event) => {
-        if (event.candidate && socketRef.current) {
-          socketRef.current.emit(
-            "signal",
-            socketListId,
-            JSON.stringify({ ice: event.candidate }),
-          );
-        }
-      };
-
-      /* Combine incoming audio + video tracks into a new MediaStream reference so React re-renders */
-      pc.ontrack = (event) => {
-        let existingTracks = [];
-        if (remoteStreamsRef.current[socketListId]) {
-          existingTracks = remoteStreamsRef.current[socketListId]
-            .getTracks()
-            .filter((t) => t.kind !== event.track.kind);
-        } else if (event.streams && event.streams[0]) {
-          existingTracks = event.streams[0]
-            .getTracks()
-            .filter((t) => t.kind !== event.track.kind);
-        }
-
-        const updatedStream = new MediaStream([...existingTracks, event.track]);
-        remoteStreamsRef.current[socketListId] = updatedStream;
-
-        setVideos((prevVideos) => {
-          const exists = prevVideos.some((v) => v.socketId === socketListId);
-          if (exists) {
-            return prevVideos.map((v) =>
-              v.socketId === socketListId ? { ...v, stream: updatedStream } : v,
-            );
-          }
-          return [
-            ...prevVideos,
-            { socketId: socketListId, stream: updatedStream },
-          ];
-        });
-      };
-
-      /* Attach local tracks (or fallback dummy tracks so transceivers are bidirectional) */
-      const localStream = window.localStream;
-      const videoTrack = localStream?.getVideoTracks()[0] || blackScreen();
-      const audioTrack = localStream?.getAudioTracks()[0] || silence();
-
-      const outboundStream = new MediaStream([videoTrack, audioTrack]);
-      outboundStream.getTracks().forEach((track) => {
-        pc.addTrack(track, outboundStream);
-      });
-
-      return pc;
-    },
-    [blackScreen, silence],
-  );
-
-  /* Handle incoming SDP offers, answers, and ICE candidates */
-  const gotMessageFromServer = useCallback(
-    async (fromId, message) => {
-      try {
-        if (fromId === socketIdRef.current) return;
-        const signal = JSON.parse(message);
-
-        /* Ensure peer connection exists even if offer arrives before user-joined */
-        const pc = connections.current[fromId] || createPeerConnection(fromId);
-
-        if (signal.sdp) {
-          const remoteDescription = new RTCSessionDescription(signal.sdp);
-
-          if (signal.sdp.type === "offer") {
-            await pc.setRemoteDescription(remoteDescription);
-            await flushIceQueue(fromId, pc);
-
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-
-            socketRef.current.emit(
-              "signal",
-              fromId,
-              JSON.stringify({ sdp: pc.localDescription }),
-            );
-          } else if (signal.sdp.type === "answer") {
-            if (pc.signalingState === "have-local-offer") {
-              await pc.setRemoteDescription(remoteDescription);
-              await flushIceQueue(fromId, pc);
-            }
-          }
-        }
-
-        if (signal.ice) {
-          if (pc.remoteDescription && pc.remoteDescription.type) {
-            await pc.addIceCandidate(new RTCIceCandidate(signal.ice));
-          } else {
-            /* Queue ICE candidate until setRemoteDescription finishes */
-            if (!iceCandidateQueue.current[fromId]) {
-              iceCandidateQueue.current[fromId] = [];
-            }
-            iceCandidateQueue.current[fromId].push(signal.ice);
-          }
-        }
-      } catch (e) {
-        console.error("Signal error:", e);
-      }
-    },
-    [createPeerConnection],
-  );
-
-  /* Replace tracks and renegotiate SDP with all connected peers */
-  const syncStreamWithPeers = useCallback((stream) => {
-    for (const id in connections.current) {
-      if (id === socketIdRef.current) continue;
-      const pc = connections.current[id];
-      const senders = pc.getSenders();
-
-      stream.getTracks().forEach((track) => {
-        const sender = senders.find(
+      const senders = pc.getSenders ? pc.getSenders() : [];
+      newStream.getTracks().forEach((track) => {
+        const existingSender = senders.find(
           (s) => s.track && s.track.kind === track.kind,
         );
-        if (sender) {
-          sender.replaceTrack(track);
+        if (existingSender) {
+          existingSender.replaceTrack(track).catch(() => {});
         } else {
-          pc.addTrack(track, stream);
+          pc.addTrack(track, newStream);
         }
       });
-
-      if (pc.signalingState === "stable" && socketRef.current) {
-        pc.createOffer()
-          .then((description) => pc.setLocalDescription(description))
-          .then(() => {
-            socketRef.current.emit(
-              "signal",
-              id,
-              JSON.stringify({ sdp: pc.localDescription }),
-            );
-          })
-          .catch((e) => console.error("Renegotiation error:", e));
-      }
-    }
-  }, []);
-
-  /* Toggle microphone */
-  const toggleMic = () => {
-    if (!window.localStream || !audioAvailable) return;
-    const audioTrack = window.localStream.getAudioTracks()[0];
-    if (audioTrack) {
-      audioTrack.enabled = !audioTrack.enabled;
-      setMicReady(audioTrack.enabled);
-      setAudio(audioTrack.enabled);
-    }
-  };
-
-  /* Toggle camera */
-  const toggleCamera = () => {
-    if (!window.localStream || !videoAvailable) return;
-    const videoTrack = window.localStream.getVideoTracks()[0];
-    if (videoTrack) {
-      videoTrack.enabled = !videoTrack.enabled;
-      setCamReady(videoTrack.enabled);
-      setVideo(videoTrack.enabled);
-    }
-  };
-
-  const addMessage = useCallback((data, sender, socketId) => {
-    setMessages((prev) => [...prev, { sender, data, socketId }]);
-    if (socketId !== socketIdRef.current) {
-      setNewMessages((prev) => prev + 1);
-    }
-  }, []);
-
-  const connectToSocketServer = () => {
-    socketRef.current = io(server_url, {
-      transports: ["websocket"],
-    });
-
-    socketRef.current.on("signal", gotMessageFromServer);
-    socketRef.current.on("chat-message", addMessage);
-
-    socketRef.current.on("connect", () => {
-      socketIdRef.current = socketRef.current.id;
-      socketRef.current.emit("join-call", currentRoomCode);
-    });
-
-    socketRef.current.on("user-left", (id) => {
-      setVideos((prev) => prev.filter((v) => v.socketId !== id));
-      setPinnedVideo((curr) => (curr === id ? null : curr));
-
-      delete remoteStreamsRef.current[id];
-      delete iceCandidateQueue.current[id];
-
-      if (connections.current[id]) {
-        connections.current[id].close();
-        delete connections.current[id];
-      }
-    });
-
-    socketRef.current.on("user-joined", (id, clients) => {
-      clients.forEach((socketListId) => {
-        if (socketListId === socketIdRef.current) return;
-        createPeerConnection(socketListId);
-      });
-
-      if (id === socketIdRef.current) {
-        for (const id2 in connections.current) {
-          if (id2 === socketIdRef.current) continue;
-          const pc = connections.current[id2];
-          if (pc.signalingState !== "stable") continue;
-
-          pc.createOffer()
-            .then((desc) => pc.setLocalDescription(desc))
-            .then(() => {
-              socketRef.current.emit(
-                "signal",
-                id2,
-                JSON.stringify({ sdp: pc.localDescription }),
-              );
-            })
-            .catch((err) => console.error("Offer error:", err));
-        }
-      }
     });
   };
 
-  const handleJoinRoom = (e) => {
-    if (e) e.preventDefault();
-    if (!username.trim()) return;
-    setAskForUsername(false);
-    connectToSocketServer();
-  };
+  // Toggle Microphone smoothly without dropping WebRTC connections
+  const handleToggleAudio = (forcedState) => {
+    const nextAudio = typeof forcedState === "boolean" ? forcedState : !audio;
 
-  const restoreCameraStream = useCallback(async () => {
-    let vTrack = null;
-    if (videoAvailable) {
-      try {
-        const camStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+    if (nextAudio && !isOrganizer && !permissions.allowMic) {
+      showToast("Microphone is locked by the Organizer.");
+      return;
+    }
+
+    if (localStreamRef.current) {
+      const audioTracks = localStreamRef.current.getAudioTracks();
+      if (audioTracks.length > 0) {
+        audioTracks.forEach((t) => {
+          t.enabled = nextAudio;
         });
-        vTrack = camStream.getVideoTracks()[0];
-        if (vTrack) vTrack.enabled = video;
-      } catch {
-        vTrack = null;
       }
     }
 
-    const existingAudio = window.localStream?.getAudioTracks()[0] || silence();
-    const restoredStream = new MediaStream(
-      vTrack ? [vTrack, existingAudio] : [existingAudio],
-    );
+    setAudio(nextAudio);
+    if (socketRef.current) {
+      socketRef.current.emit("media-state-change", { audio: nextAudio });
+    }
+  };
 
-    window.localStream = restoredStream;
-    setLocalStreamState(restoredStream);
-    syncStreamWithPeers(
-      new MediaStream([vTrack || blackScreen(), existingAudio]),
-    );
-  }, [videoAvailable, video, silence, blackScreen, syncStreamWithPeers]);
+  // Toggle Camera smoothly
+  const handleToggleVideo = async (forcedState) => {
+    const nextVideo = typeof forcedState === "boolean" ? forcedState : !video;
 
-  const handleScreen = async () => {
-    if (!screenAvailable) return;
+    if (nextVideo && !isOrganizer && !permissions.allowCam) {
+      showToast("Camera is locked by the Organizer.");
+      return;
+    }
 
-    if (!screen) {
+    if (localStreamRef.current) {
+      const videoTracks = localStreamRef.current.getVideoTracks();
+      if (videoTracks.length > 0) {
+        videoTracks.forEach((t) => {
+          t.enabled = nextVideo;
+        });
+      } else if (nextVideo && videoAvailable) {
+        try {
+          const camStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+          });
+          const newVideoTrack = camStream.getVideoTracks()[0];
+          localStreamRef.current.addTrack(newVideoTrack);
+          syncStreamToPeers(localStreamRef.current);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+
+    setVideo(nextVideo);
+    if (socketRef.current) {
+      socketRef.current.emit("media-state-change", { video: nextVideo });
+    }
+  };
+
+  // Toggle Screen Share
+  const handleToggleScreen = async (forcedOff = false) => {
+    const nextScreen = forcedOff ? false : !screen;
+
+    if (nextScreen && !isOrganizer && !permissions.allowScreen) {
+      showToast("Screen sharing is disabled by the Organizer.");
+      return;
+    }
+
+    if (nextScreen) {
       try {
         const displayStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: true,
         });
-
         const screenTrack = displayStream.getVideoTracks()[0];
-        const audioTrack = window.localStream?.getAudioTracks()[0] || silence();
-
-        const combinedStream = new MediaStream([screenTrack, audioTrack]);
-
-        window.localStream = combinedStream;
-        setLocalStreamState(combinedStream);
-        setScreen(true);
-        syncStreamWithPeers(combinedStream);
 
         screenTrack.onended = () => {
-          setScreen(false);
-          restoreCameraStream();
+          handleToggleScreen(true);
         };
+
+        if (localVideoref.current) {
+          localVideoref.current.srcObject = displayStream;
+        }
+        syncStreamToPeers(displayStream);
+        setScreen(true);
+        socketRef.current?.emit("media-state-change", { screen: true });
       } catch (e) {
-        console.log("Screen share cancelled:", e);
         setScreen(false);
       }
     } else {
-      window.localStream?.getVideoTracks().forEach((track) => track.stop());
+      try {
+        const camStream = await navigator.mediaDevices.getUserMedia({
+          video: videoAvailable,
+          audio: audioAvailable,
+        });
+        camStream.getAudioTracks().forEach((t) => (t.enabled = audio));
+        camStream.getVideoTracks().forEach((t) => (t.enabled = video));
+
+        localStreamRef.current = camStream;
+        window.localStream = camStream;
+        if (localVideoref.current) {
+          localVideoref.current.srcObject = camStream;
+        }
+        syncStreamToPeers(camStream);
+      } catch (e) {
+        console.error(e);
+      }
       setScreen(false);
-      restoreCameraStream();
+      socketRef.current?.emit("media-state-change", { screen: false });
     }
   };
 
-  const handleChat = () => {
-    setModal((prev) => {
-      const next = !prev;
-      if (next) setNewMessages(0);
-      return next;
+  // WebRTC Signaling Handler
+  const gotMessageFromServer = (fromId, message) => {
+    const signal = JSON.parse(message);
+    if (fromId === socketIdRef.current) return;
+
+    const pc = connectionsRef.current[fromId];
+    if (!pc) return;
+
+    if (signal.sdp) {
+      pc.setRemoteDescription(new RTCSessionDescription(signal.sdp))
+        .then(() => {
+          if (signal.sdp.type === "offer") {
+            pc.createAnswer()
+              .then((description) => {
+                pc.setLocalDescription(description).then(() => {
+                  socketRef.current.emit(
+                    "signal",
+                    fromId,
+                    JSON.stringify({ sdp: pc.localDescription }),
+                  );
+                });
+              })
+              .catch((e) => console.error(e));
+          }
+        })
+        .catch((e) => console.error(e));
+    }
+
+    if (signal.ice) {
+      pc.addIceCandidate(new RTCIceCandidate(signal.ice)).catch((e) =>
+        console.error(e),
+      );
+    }
+  };
+
+  // Connect to Socket.IO Server
+  const connectToSocketServer = () => {
+    socketRef.current = io.connect(server, { secure: false });
+
+    socketRef.current.on("signal", gotMessageFromServer);
+
+    socketRef.current.on("connect", () => {
+      socketIdRef.current = socketRef.current.id;
+      const userKey =
+        userData?.username || localStorage.getItem("token") || username.trim();
+
+      socketRef.current.emit("request-join-call", {
+        path: window.location.href,
+        name: username.trim() || "Participant",
+        userKey,
+        isNewMeeting: Boolean(location.state?.isNewMeeting),
+        audio,
+        video,
+      });
+    });
+
+    socketRef.current.on("waiting-for-host", () => {
+      setWaitingForApproval(true);
+      setAskForUsername(false);
+    });
+
+    socketRef.current.on("join-denied", ({ message: msg }) => {
+      setWaitingForApproval(false);
+      setAskForUsername(true);
+      setDeniedMessage(
+        msg || "The Organizer declined your request to join this meeting.",
+      );
+      socketRef.current?.disconnect();
+    });
+
+    socketRef.current.on("join-accepted", (payload) => {
+      setWaitingForApproval(false);
+      setAskForUsername(false);
+      setIsOrganizer(Boolean(payload.isOrganizer));
+      setOrganizerSocketId(payload.organizerSocketId);
+      if (payload.permissions) {
+        setPermissions(payload.permissions);
+        // Enforce initial room locks if not organizer
+        if (!payload.isOrganizer) {
+          if (!payload.permissions.allowMic) handleToggleAudio(false);
+          if (!payload.permissions.allowCam) handleToggleVideo(false);
+        }
+      }
+      if (Array.isArray(payload.participants)) {
+        setParticipants(payload.participants);
+      }
+      if (Array.isArray(payload.messages)) {
+        setMessages(payload.messages);
+      }
+    });
+
+    socketRef.current.on("room-state-sync", (state) => {
+      if (state.organizerSocketId !== undefined) {
+        setOrganizerSocketId(state.organizerSocketId);
+        setIsOrganizer(state.organizerSocketId === socketIdRef.current);
+      }
+      if (state.permissions) {
+        setPermissions(state.permissions);
+      }
+      if (Array.isArray(state.participants)) {
+        setParticipants(state.participants);
+      }
+      if (Array.isArray(state.waitingList)) {
+        setWaitingList(state.waitingList);
+      }
+    });
+
+    socketRef.current.on(
+      "waiting-room-notification",
+      ({ name: joinerName, waitingList: updatedWaiting }) => {
+        if (Array.isArray(updatedWaiting)) {
+          setWaitingList(updatedWaiting);
+        }
+        showToast(`${joinerName} is waiting in the lobby to join.`);
+      },
+    );
+
+    socketRef.current.on("host-enforced-action", ({ type, reason }) => {
+      if (type === "force-mute-mic") {
+        if (localStreamRef.current) {
+          localStreamRef.current.getAudioTracks().forEach((t) => {
+            t.enabled = false;
+          });
+        }
+        setAudio(false);
+      } else if (type === "force-disable-cam") {
+        if (localStreamRef.current) {
+          localStreamRef.current.getVideoTracks().forEach((t) => {
+            t.enabled = false;
+          });
+        }
+        setVideo(false);
+      } else if (type === "force-stop-screen") {
+        handleToggleScreen(true);
+      }
+      if (reason) showToast(reason);
+    });
+
+    socketRef.current.on("kicked-from-room", ({ message: kickMsg }) => {
+      alert(kickMsg || "You were removed from the meeting by the Organizer.");
+      handleEndCall();
+    });
+
+    socketRef.current.on("meeting-ended-by-host", ({ message: endMsg }) => {
+      alert(endMsg || "The Organizer has ended the meeting.");
+      handleEndCall();
+    });
+
+    socketRef.current.on(
+      "chat-message",
+      (data, sender, socketIdSender, meta) => {
+        const incomingMsg = meta || {
+          id: `${Date.now()}-${Math.random()}`,
+          sender,
+          senderSocketId: socketIdSender,
+          data,
+          scope: "everyone",
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        };
+
+        setMessages((prev) => [...prev, incomingMsg]);
+        if (
+          socketIdSender !== socketIdRef.current &&
+          activeSidePanelRef.current !== "chat"
+        ) {
+          setNewMessages((prev) => prev + 1);
+        }
+      },
+    );
+
+    socketRef.current.on("user-left", (id) => {
+      if (connectionsRef.current[id]) {
+        connectionsRef.current[id].close();
+        delete connectionsRef.current[id];
+      }
+      setVideos((prev) => prev.filter((v) => v.socketId !== id));
+    });
+
+    socketRef.current.on("user-joined", (id, clients, participantList) => {
+      if (Array.isArray(participantList)) {
+        setParticipants(participantList);
+      }
+
+      clients.forEach((socketListId) => {
+        if (socketListId === socketIdRef.current) return;
+        if (connectionsRef.current[socketListId]) return;
+
+        const pc = new RTCPeerConnection(peerConfigConnections);
+        connectionsRef.current[socketListId] = pc;
+
+        pc.onicecandidate = (event) => {
+          if (event.candidate != null) {
+            socketRef.current.emit(
+              "signal",
+              socketListId,
+              JSON.stringify({ ice: event.candidate }),
+            );
+          }
+        };
+
+        pc.ontrack = (event) => {
+          const remoteStream = event.streams[0];
+          if (!remoteStream) return;
+
+          setVideos((prev) => {
+            const exists = prev.some((v) => v.socketId === socketListId);
+            if (exists) {
+              return prev.map((v) =>
+                v.socketId === socketListId
+                  ? { ...v, stream: remoteStream }
+                  : v,
+              );
+            }
+            return [...prev, { socketId: socketListId, stream: remoteStream }];
+          });
+        };
+
+        // Attach local stream tracks
+        if (!localStreamRef.current) {
+          localStreamRef.current = new MediaStream([
+            createBlackTrack(),
+            createSilenceTrack(),
+          ]);
+        }
+
+        localStreamRef.current.getTracks().forEach((track) => {
+          pc.addTrack(track, localStreamRef.current);
+        });
+      });
+
+      if (id === socketIdRef.current) {
+        Object.entries(connectionsRef.current).forEach(([peerId, pc]) => {
+          if (peerId === socketIdRef.current) return;
+          pc.createOffer()
+            .then((description) => {
+              pc.setLocalDescription(description).then(() => {
+                socketRef.current.emit(
+                  "signal",
+                  peerId,
+                  JSON.stringify({ sdp: pc.localDescription }),
+                );
+              });
+            })
+            .catch((e) => console.error(e));
+        });
+      }
     });
   };
 
-  const sendMessage = (e) => {
+  // Join Meeting Button Handler
+  const handleConnect = (e) => {
     if (e) e.preventDefault();
-    if (!message.trim() || !socketRef.current) return;
-    socketRef.current.emit("chat-message", message.trim(), username);
-    setMessage("");
+    if (!username.trim()) return;
+    setDeniedMessage("");
+    connectToSocketServer();
   };
 
+  // Leave Meeting Handler
   const handleEndCall = () => {
     try {
-      if (window.localStream) {
-        window.localStream.getTracks().forEach((track) => track.stop());
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => track.stop());
       }
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -584,421 +691,883 @@ function VideoMeet() {
     } catch (e) {
       console.error(e);
     }
-    const destination = localStorage.getItem("token") ? "/home" : "/";
-    routeTo(destination);
+    const hasToken = Boolean(localStorage.getItem("token"));
+    navigate(hasToken ? "/home" : "/");
   };
 
-  const handleCopyMeetingCode = async () => {
-    try {
-      await navigator.clipboard.writeText(currentRoomCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (e) {
-      console.error("Failed to copy:", e);
-    }
+  // Organizer Moderation Calls
+  const handleUpdatePermission = (patch) => {
+    if (!isOrganizer || !socketRef.current) return;
+    socketRef.current.emit("host-update-permissions", patch);
   };
 
-  const handlePinVideo = (id) => {
-    setPinnedVideo((curr) => (curr === id ? null : id));
+  const handleModerateParticipant = (targetSocketId, action) => {
+    if (!isOrganizer || !socketRef.current) return;
+    socketRef.current.emit("host-moderate-participant", {
+      targetSocketId,
+      action,
+    });
   };
 
-  const allTiles = [
-    {
-      id: "local",
-      stream: localStreamState,
-      label: `You (${username || "Host"})`,
-      muted: true,
-      isLocal: true,
-      isScreen: screen,
-      showAvatar: (!video || !videoAvailable) && !screen,
-    },
-    ...videos.map((v, idx) => ({
-      id: v.socketId,
-      stream: v.stream,
-      label: `Participant ${idx + 1}`,
-      muted: false,
-      isLocal: false,
-      isScreen: false,
-      showAvatar: false,
-    })),
-  ];
+  const handleWaitingDecision = (targetSocketId, action) => {
+    if (!isOrganizer || !socketRef.current) return;
+    socketRef.current.emit("host-handle-waiting", {
+      targetSocketId,
+      action,
+    });
+  };
 
-  const totalCount = allTiles.length;
-  const gridCountClass =
-    totalCount === 1
-      ? "count-1"
-      : totalCount === 2
-        ? "count-2"
-        : totalCount <= 4
-          ? `count-${totalCount}`
-          : "count-many";
+  // Open Direct Chat to a Specific Participant
+  const openDirectChatWith = (targetSid) => {
+    setChatTarget(targetSid);
+    setActiveSidePanel("chat");
+  };
 
-  const pinnedTile = allTiles.find((t) => t.id === pinnedVideo);
-  const unpinnedTiles = allTiles.filter((t) => t.id !== pinnedVideo);
+  // Send Chat Message
+  const handleSendMessage = (e) => {
+    if (e) e.preventDefault();
+    if (!message.trim() || !socketRef.current) return;
+
+    const toSocketId =
+      !isOrganizer && permissions.chatMode === "host_only"
+        ? organizerSocketId
+        : chatTarget === "everyone"
+          ? null
+          : chatTarget;
+
+    socketRef.current.emit("chat-message", message.trim(), username, {
+      toSocketId,
+    });
+    setMessage("");
+  };
+
+  const getRoomCode = () => {
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    return parts[parts.length - 1] || "room";
+  };
+
+  const copyMeetingCode = () => {
+    navigator.clipboard.writeText(getRoomCode());
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const getInitials = (fullName) => {
+    const parts = (fullName || "U").trim().split(" ");
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return (fullName || "U").substring(0, 2).toUpperCase();
+  };
+
+  // Map participants by socketId for fast lookup
+  const participantMap = participants.reduce((acc, p) => {
+    acc[p.socketId] = p;
+    return acc;
+  }, {});
+
+  // Sort participants so Organizer is always listed first
+  const sortedParticipants = [...participants].sort((a, b) =>
+    a.isOrganizer === b.isOrganizer ? 0 : a.isOrganizer ? -1 : 1,
+  );
+
+  // ── 1. WAITING ROOM VIEW ──
+  if (waitingForApproval) {
+    return (
+      <div className="vm-lobby-wrapper">
+        <div className="vm-waiting-card">
+          <div className="vm-waiting-spinner" />
+          <h2>Waiting for the Organizer</h2>
+          <p>
+            You have requested to join room <strong>{getRoomCode()}</strong> as{" "}
+            <strong>{username}</strong>. The meeting Organizer will let you in
+            shortly.
+          </p>
+          <button
+            type="button"
+            className="vm-btn-leave-lobby"
+            onClick={handleEndCall}
+          >
+            Cancel & Leave
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── 2. PRE-JOIN LOBBY VIEW ──
+  if (askForUsername) {
+    return (
+      <div className="vm-lobby-wrapper">
+        <div className="vm-lobby-container">
+          <div className="vm-lobby-preview">
+            <video
+              ref={localVideoref}
+              autoPlay
+              muted
+              playsInline
+              className={`vm-lobby-video ${!video ? "video-hidden" : ""}`}
+            />
+            {!video && (
+              <div className="vm-lobby-avatar">
+                <div className="vm-avatar-circle large">
+                  {getInitials(username || "You")}
+                </div>
+                <span>Camera is off</span>
+              </div>
+            )}
+            <div className="vm-lobby-media-toggles">
+              <button
+                type="button"
+                className={`vm-ctrl-btn ${!audio ? "off" : ""}`}
+                onClick={() => handleToggleAudio()}
+              >
+                {audio ? <MicIcon /> : <MicOffIcon />}
+              </button>
+              <button
+                type="button"
+                className={`vm-ctrl-btn ${!video ? "off" : ""}`}
+                onClick={() => handleToggleVideo()}
+              >
+                {video ? <VideocamIcon /> : <VideocamOffIcon />}
+              </button>
+            </div>
+          </div>
+
+          <form className="vm-lobby-card" onSubmit={handleConnect}>
+            <div className="vm-lobby-badge">
+              {location.state?.isNewMeeting
+                ? "● Joining as Meeting Organizer"
+                : `● Room: ${getRoomCode()}`}
+            </div>
+            <h1>Ready to join?</h1>
+            <p>
+              Enter your display name so other participants and the Organizer
+              can identify you in the meeting.
+            </p>
+
+            {deniedMessage && (
+              <div className="vm-lobby-alert">{deniedMessage}</div>
+            )}
+
+            <label className="vm-lobby-label" htmlFor="display-name-input">
+              Your Display Name
+            </label>
+            <input
+              id="display-name-input"
+              type="text"
+              className="vm-lobby-input"
+              placeholder="e.g. Vedant Shinde"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+
+            <button
+              type="submit"
+              className="vm-lobby-join-btn"
+              disabled={!username.trim()}
+            >
+              {location.state?.isNewMeeting
+                ? "Start Meeting as Organizer"
+                : "Join Meeting"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ── 3. LIVE MEETING WORKSPACE ──
+  const micLocked = !isOrganizer && !permissions.allowMic;
+  const camLocked = !isOrganizer && !permissions.allowCam;
+  const screenLocked = !isOrganizer && !permissions.allowScreen;
 
   return (
-    <>
-      {showMeetingCode && (
-        <div className="meetingCodeOverlay">
-          <div className="meetingCodeModal">
+    <div className="vm-room-container">
+      {/* Toast Notification Banner */}
+      {toastMessage && <div className="vm-toast-banner">{toastMessage}</div>}
+
+      {/* Top Room Header */}
+      <header className="vm-room-header">
+        <div className="vm-room-info">
+          <span className="vm-brand-dot" />
+          <span className="vm-room-title">NexusMeet</span>
+          <button
+            type="button"
+            className="vm-room-code-chip"
+            onClick={copyMeetingCode}
+            title="Copy Meeting Code"
+          >
+            <span>{getRoomCode()}</span>
+            <ContentCopyIcon style={{ fontSize: "13px" }} />
+            {copiedCode && <span className="copied-tag">Copied!</span>}
+          </button>
+          {isOrganizer && (
+            <span className="vm-role-pill">You are the Organizer</span>
+          )}
+        </div>
+
+        {/* Waiting Room Quick Alert for Organizer */}
+        {isOrganizer && waitingList.length > 0 && (
+          <div className="vm-waiting-alert-bar">
+            <span>
+              <strong>{waitingList.length}</strong> waiting in lobby
+            </span>
             <button
               type="button"
-              className="closeMeetingCode"
-              onClick={() => setShowMeetingCode(false)}
+              className="vm-admit-quick-btn"
+              onClick={() => handleWaitingDecision(null, "admit-all")}
             >
-              ×
+              Admit All
             </button>
-            <h2>Your meeting is ready</h2>
-            <p className="meetingCodeDescription">
-              Share this room code with others so they can join immediately.
-            </p>
-            <div className="meetingCodeBox">
-              <span>{currentRoomCode}</span>
-              <button type="button" onClick={handleCopyMeetingCode}>
-                {copied ? "Copied!" : "Copy"}
-              </button>
-            </div>
             <button
               type="button"
-              className="continueMeetingButton"
-              onClick={() => setShowMeetingCode(false)}
+              className="vm-view-waiting-btn"
+              onClick={() => setActiveSidePanel("host")}
             >
-              Continue to Setup
+              Review
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </header>
 
-      {askForUsername ? (
-        <div className="lobby-container">
-          <div className="lobby-card">
-            <div className="lobby-preview-col">
-              <div className="lobbyVideo">
-                <video ref={lobbyVideoRef} autoPlay muted playsInline />
+      {/* Main Content Stage: Video Grid + Optional Side Drawer */}
+      <div className="vm-main-stage">
+        <div
+          className={`vm-video-grid count-${Math.min(videos.length + 1, 6)}`}
+        >
+          {/* Local User Tile */}
+          <div
+            className={`vm-video-tile local-tile ${
+              isOrganizer ? "organizer-tile" : ""
+            }`}
+          >
+            <video
+              ref={localVideoref}
+              autoPlay
+              muted
+              playsInline
+              className={`vm-video-element ${!video && !screen ? "video-hidden" : ""}`}
+            />
 
-                {(!camReady || !videoAvailable) && (
-                  <div className="lobby-cam-off-overlay">
-                    <div className="lobby-avatar-circle">
-                      {(username || "Y").trim().charAt(0).toUpperCase()}
-                    </div>
-                    <span>
-                      {videoAvailable
-                        ? "Camera is turned off"
-                        : "Camera unavailable / in use"}
-                    </span>
-                  </div>
+            {!video && !screen && (
+              <div className="vm-avatar-fallback">
+                <div className="vm-avatar-circle">{getInitials(username)}</div>
+              </div>
+            )}
+
+            <div className="vm-tile-top-bar">
+              <span
+                className={`vm-status-pill ${audio ? "mic-on" : "mic-off"}`}
+              >
+                {audio ? (
+                  <MicIcon fontSize="inherit" />
+                ) : (
+                  <MicOffIcon fontSize="inherit" />
                 )}
-
-                <span className="lobby-video-label">
-                  {username.trim() ? username : "Preview"}
-                </span>
-
-                <div className="lobby-video-controls">
-                  <button
-                    type="button"
-                    className={`lobby-icon-btn ${!micReady ? "muted" : ""}`}
-                    onClick={toggleMic}
-                    title={micReady ? "Mute microphone" : "Unmute microphone"}
-                  >
-                    {micReady ? (
-                      <MicIcon fontSize="small" />
-                    ) : (
-                      <MicOffIcon fontSize="small" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className={`lobby-icon-btn ${!camReady ? "muted" : ""}`}
-                    onClick={toggleCamera}
-                    title={camReady ? "Turn off camera" : "Turn on camera"}
-                  >
-                    {camReady ? (
-                      <VideocamIcon fontSize="small" />
-                    ) : (
-                      <VideocamOffIcon fontSize="small" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="lobby-status-row">
-                <div
-                  className={`lobby-status-chip ${micReady ? "ready" : "error"}`}
-                >
-                  {micReady ? (
-                    <MicIcon fontSize="small" />
-                  ) : (
-                    <MicOffIcon fontSize="small" />
-                  )}
-                  <span>{micReady ? "Microphone On" : "Microphone Muted"}</span>
-                </div>
-                <div
-                  className={`lobby-status-chip ${camReady ? "ready" : "error"}`}
-                >
-                  {camReady ? (
-                    <VideocamIcon fontSize="small" />
-                  ) : (
-                    <VideocamOffIcon fontSize="small" />
-                  )}
-                  <span>{camReady ? "Camera On" : "Camera Off"}</span>
-                </div>
-              </div>
+              </span>
             </div>
 
-            <form className="lobby-form-col" onSubmit={handleJoinRoom}>
-              <div className="lobby-meta">
-                <div className="lobby-room-badge">
-                  <span>Room: {currentRoomCode}</span>
-                </div>
-                <h2 className="lobby-heading">Ready to join?</h2>
-                <p className="lobby-subtext">
-                  Configure your audio and video before entering the meeting
-                  room.
-                </p>
-              </div>
+            <div className="vm-tile-label">
+              <span className="vm-participant-name">{username} (You)</span>
+              {isOrganizer && (
+                <span className="vm-organizer-sub">Organizer</span>
+              )}
+            </div>
+          </div>
 
-              <div className="lobby-field">
-                <label htmlFor="lobby-username">Display Name</label>
-                <input
-                  id="lobby-username"
-                  type="text"
-                  className="lobby-native-input"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your name..."
-                  autoFocus
-                  required
-                />
-              </div>
+          {/* Remote Participant Tiles */}
+          {videos.map((peer) => (
+            <RemoteVideoTile
+              key={peer.socketId}
+              peer={peer}
+              participantMeta={participantMap[peer.socketId]}
+              isViewerOrganizer={isOrganizer}
+              onModerate={handleModerateParticipant}
+              onDirectMessage={openDirectChatWith}
+            />
+          ))}
+        </div>
 
+        {/* Side Drawer: Chat / Participants / Organizer Controls */}
+        {activeSidePanel && (
+          <aside className="vm-side-drawer">
+            <div className="vm-drawer-tabs">
               <button
-                type="submit"
-                className="connect-btn"
-                disabled={!username.trim()}
+                type="button"
+                className={`vm-drawer-tab ${
+                  activeSidePanel === "people" ? "active" : ""
+                }`}
+                onClick={() => setActiveSidePanel("people")}
               >
-                Join Meeting Now
+                <PeopleAltIcon fontSize="small" />
+                <span>People ({participants.length})</span>
               </button>
 
               <button
                 type="button"
-                className="lobby-back-btn"
-                onClick={() =>
-                  routeTo(localStorage.getItem("token") ? "/home" : "/")
-                }
+                className={`vm-drawer-tab ${
+                  activeSidePanel === "chat" ? "active" : ""
+                }`}
+                onClick={() => setActiveSidePanel("chat")}
               >
-                Cancel & Return
+                <ChatIcon fontSize="small" />
+                <span>Chat</span>
               </button>
-            </form>
-          </div>
-        </div>
-      ) : (
-        <div className="meetRoom">
-          <header className="meet-topbar">
-            <div className="meet-topbar-left">
-              <span className="meet-brand-dot" />
-              <span className="meet-topbar-title">NexusMeet</span>
+
+              {isOrganizer && (
+                <button
+                  type="button"
+                  className={`vm-drawer-tab ${
+                    activeSidePanel === "host" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveSidePanel("host")}
+                >
+                  <SecurityIcon fontSize="small" />
+                  <span>Host</span>
+                  {waitingList.length > 0 && (
+                    <span className="vm-tab-badge">{waitingList.length}</span>
+                  )}
+                </button>
+              )}
+
               <button
                 type="button"
-                className="meet-code-pill"
-                onClick={handleCopyMeetingCode}
-                title="Click to copy meeting code"
+                className="vm-drawer-close"
+                onClick={() => setActiveSidePanel(null)}
               >
-                <span>Room:</span>
-                <code>{currentRoomCode}</code>
-                <ContentCopyIcon sx={{ fontSize: 14 }} />
-                {copied && (
-                  <span style={{ color: "#4ade80", fontSize: "11px" }}>
-                    Copied!
-                  </span>
-                )}
+                <CloseIcon fontSize="small" />
               </button>
             </div>
 
-            <div className="meet-topbar-right">
-              <div className="meet-stat-badge">
-                <PeopleAltOutlinedIcon
-                  sx={{ fontSize: 16, color: "#3ec6e0" }}
-                />
-                <span>
-                  {totalCount}{" "}
-                  {totalCount === 1 ? "Participant" : "Participants"}
-                </span>
-              </div>
-            </div>
-          </header>
+            {/* ── TAB 1: PEOPLE / PARTICIPANTS LIST ── */}
+            {activeSidePanel === "people" && (
+              <div className="vm-drawer-body">
+                {isOrganizer && (
+                  <div className="vm-bulk-actions">
+                    <button
+                      type="button"
+                      className="vm-bulk-btn"
+                      onClick={() =>
+                        handleModerateParticipant(null, "mute-all")
+                      }
+                    >
+                      <MicOffIcon fontSize="small" /> Mute All Participants
+                    </button>
+                  </div>
+                )}
 
-          <div className="meet-workspace">
-            <div className="videoStage">
-              {pinnedTile ? (
-                <div className="pinned-stage-container">
-                  <div className="pinned-main-slot">
-                    <VideoTile
-                      stream={pinnedTile.stream}
-                      label={pinnedTile.label}
-                      muted={pinnedTile.muted}
-                      isLocal={pinnedTile.isLocal}
-                      isScreen={pinnedTile.isScreen}
-                      isPinned={true}
-                      showAvatar={pinnedTile.showAvatar}
-                      onPin={() => handlePinVideo(pinnedTile.id)}
-                    />
+                <div className="vm-participant-list">
+                  {sortedParticipants.map((p) => {
+                    const isMe = p.socketId === socketIdRef.current;
+                    return (
+                      <div key={p.socketId} className="vm-participant-item">
+                        <div className="vm-participant-avatar">
+                          {getInitials(p.name)}
+                        </div>
+                        <div className="vm-participant-details">
+                          <span className="vm-p-name">
+                            {p.name} {isMe ? "(You)" : ""}
+                          </span>
+                          <span
+                            className={`vm-p-role ${
+                              p.isOrganizer ? "is-org" : ""
+                            }`}
+                          >
+                            {p.isOrganizer ? "Organizer" : "Participant"}
+                          </span>
+                        </div>
+
+                        <div className="vm-participant-actions">
+                          <span
+                            className={`vm-p-icon ${p.audio ? "on" : "off"}`}
+                          >
+                            {p.audio ? (
+                              <MicIcon fontSize="small" />
+                            ) : (
+                              <MicOffIcon fontSize="small" />
+                            )}
+                          </span>
+                          <span
+                            className={`vm-p-icon ${p.video ? "on" : "off"}`}
+                          >
+                            {p.video ? (
+                              <VideocamIcon fontSize="small" />
+                            ) : (
+                              <VideocamOffIcon fontSize="small" />
+                            )}
+                          </span>
+
+                          {!isMe && (
+                            <button
+                              type="button"
+                              className="vm-p-action-btn"
+                              title={`Message ${p.name}`}
+                              onClick={() => openDirectChatWith(p.socketId)}
+                            >
+                              <ChatIcon fontSize="inherit" />
+                            </button>
+                          )}
+
+                          {isOrganizer && !p.isOrganizer && (
+                            <>
+                              {p.audio && (
+                                <button
+                                  type="button"
+                                  className="vm-p-action-btn"
+                                  title="Force Mute"
+                                  onClick={() =>
+                                    handleModerateParticipant(
+                                      p.socketId,
+                                      "mute-mic",
+                                    )
+                                  }
+                                >
+                                  <MicOffIcon fontSize="inherit" />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="vm-p-action-btn danger"
+                                title="Remove Participant"
+                                onClick={() =>
+                                  handleModerateParticipant(p.socketId, "kick")
+                                }
+                              >
+                                <PersonRemoveIcon fontSize="inherit" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ── TAB 2: ORGANIZER / HOST CONTROLS ── */}
+            {activeSidePanel === "host" && isOrganizer && (
+              <div className="vm-drawer-body">
+                {/* Waiting Room Section */}
+                <div className="vm-host-section">
+                  <div className="vm-host-section-header">
+                    <h3>Waiting Room ({waitingList.length})</h3>
+                    {waitingList.length > 1 && (
+                      <button
+                        type="button"
+                        className="vm-text-btn"
+                        onClick={() => handleWaitingDecision(null, "admit-all")}
+                      >
+                        Admit All
+                      </button>
+                    )}
                   </div>
 
-                  {unpinnedTiles.length > 0 && (
-                    <div className="pinned-filmstrip">
-                      {unpinnedTiles.map((tile) => (
-                        <VideoTile
-                          key={tile.id}
-                          stream={tile.stream}
-                          label={tile.label}
-                          muted={tile.muted}
-                          isLocal={tile.isLocal}
-                          isScreen={tile.isScreen}
-                          isPinned={false}
-                          showAvatar={tile.showAvatar}
-                          onPin={() => handlePinVideo(tile.id)}
-                        />
+                  {waitingList.length === 0 ? (
+                    <p className="vm-empty-hint">
+                      No one is currently waiting to join.
+                    </p>
+                  ) : (
+                    <div className="vm-waiting-list">
+                      {waitingList.map((w) => (
+                        <div key={w.socketId} className="vm-waiting-item">
+                          <span className="vm-waiting-name">{w.name}</span>
+                          <div className="vm-waiting-btns">
+                            <button
+                              type="button"
+                              className="vm-approve-btn"
+                              onClick={() =>
+                                handleWaitingDecision(w.socketId, "admit")
+                              }
+                            >
+                              <CheckIcon fontSize="inherit" /> Admit
+                            </button>
+                            <button
+                              type="button"
+                              className="vm-deny-btn"
+                              onClick={() =>
+                                handleWaitingDecision(w.socketId, "deny")
+                              }
+                            >
+                              <CloseIcon fontSize="inherit" /> Deny
+                            </button>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className={`video-grid ${gridCountClass}`}>
-                  {allTiles.map((tile) => (
-                    <VideoTile
-                      key={tile.id}
-                      stream={tile.stream}
-                      label={tile.label}
-                      muted={tile.muted}
-                      isLocal={tile.isLocal}
-                      isScreen={tile.isScreen}
-                      isPinned={false}
-                      showAvatar={tile.showAvatar}
-                      onPin={() => handlePinVideo(tile.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
 
-            {showModal && (
-              <aside className="chat-room">
-                <div className="chat-header">
-                  <h3>In-Call Messages</h3>
+                {/* Meeting Permissions & Locks */}
+                <div className="vm-host-section">
+                  <h3>Participant Permissions</h3>
+
+                  <label className="vm-switch-row">
+                    <div>
+                      <span className="vm-switch-title">
+                        Waiting Room Approval
+                      </span>
+                      <span className="vm-switch-desc">
+                        Organizer must approve everyone before they join
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={permissions.waitingRoomEnabled}
+                      onChange={(e) =>
+                        handleUpdatePermission({
+                          waitingRoomEnabled: e.target.checked,
+                        })
+                      }
+                    />
+                  </label>
+
+                  <label className="vm-switch-row">
+                    <div>
+                      <span className="vm-switch-title">Allow Microphones</span>
+                      <span className="vm-switch-desc">
+                        Let participants unmute themselves
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={permissions.allowMic}
+                      onChange={(e) =>
+                        handleUpdatePermission({
+                          allowMic: e.target.checked,
+                        })
+                      }
+                    />
+                  </label>
+
+                  <label className="vm-switch-row">
+                    <div>
+                      <span className="vm-switch-title">Allow Cameras</span>
+                      <span className="vm-switch-desc">
+                        Let participants turn on their video
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={permissions.allowCam}
+                      onChange={(e) =>
+                        handleUpdatePermission({
+                          allowCam: e.target.checked,
+                        })
+                      }
+                    />
+                  </label>
+
+                  <label className="vm-switch-row">
+                    <div>
+                      <span className="vm-switch-title">
+                        Allow Screen Sharing
+                      </span>
+                      <span className="vm-switch-desc">
+                        Let participants share their screen
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={permissions.allowScreen}
+                      onChange={(e) =>
+                        handleUpdatePermission({
+                          allowScreen: e.target.checked,
+                        })
+                      }
+                    />
+                  </label>
+
+                  <div className="vm-chat-mode-control">
+                    <span className="vm-switch-title">
+                      Meeting Chat Permissions
+                    </span>
+                    <select
+                      className="vm-select"
+                      value={permissions.chatMode}
+                      onChange={(e) =>
+                        handleUpdatePermission({ chatMode: e.target.value })
+                      }
+                    >
+                      <option value="everyone">
+                        Everyone (Public & Direct Chat)
+                      </option>
+                      <option value="host_only">
+                        Direct to Organizer Only
+                      </option>
+                      <option value="disabled">
+                        Disabled (Only Organizer Can Send)
+                      </option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Danger Zone */}
+                <div className="vm-host-section">
                   <button
                     type="button"
-                    className="chat-close-btn"
-                    onClick={() => setModal(false)}
+                    className="vm-end-all-btn"
+                    onClick={() =>
+                      handleModerateParticipant(null, "end-meeting-for-all")
+                    }
                   >
-                    ×
+                    End Meeting for All
                   </button>
                 </div>
+              </div>
+            )}
 
-                <div className="chattingDisplay">
-                  {messages.length > 0 ? (
-                    messages.map((item, index) => {
+            {/* ── TAB 3: CHAT PANEL ── */}
+            {activeSidePanel === "chat" && (
+              <div className="vm-chat-wrapper">
+                <div className="vm-chat-mode-banner">
+                  {permissions.chatMode === "everyone" &&
+                    "Chat is open to everyone"}
+                  {permissions.chatMode === "host_only" &&
+                    "Participants can only message the Organizer directly"}
+                  {permissions.chatMode === "disabled" &&
+                    "Chat is disabled for participants"}
+                </div>
+
+                <div className="vm-chat-messages">
+                  {messages.length === 0 ? (
+                    <p className="vm-empty-hint">No messages yet.</p>
+                  ) : (
+                    messages.map((item) => {
                       const isMine =
-                        item.socketId === socketIdRef.current ||
-                        item.sender === username;
+                        item.senderSocketId === socketIdRef.current;
                       return (
                         <div
-                          key={index}
-                          className={`chat-bubble-wrap ${
-                            isMine ? "is-mine" : "is-other"
-                          }`}
+                          key={item.id}
+                          className={`vm-chat-bubble ${
+                            isMine ? "mine" : ""
+                          } ${item.scope === "direct" ? "direct-msg" : ""}`}
                         >
-                          <span className="chat-sender-name">
-                            {isMine ? "You" : item.sender}
-                          </span>
-                          <div className="chat-bubble">{item.data}</div>
+                          <div className="vm-chat-meta">
+                            <span className="vm-chat-sender">
+                              {item.sender}
+                              {item.isOrganizer && (
+                                <span className="vm-chat-org-tag">
+                                  Organizer
+                                </span>
+                              )}
+                            </span>
+                            {item.scope === "direct" && (
+                              <span className="vm-direct-pill">
+                                Direct to {item.toName || "Organizer"}
+                              </span>
+                            )}
+                            {item.timestamp && (
+                              <span className="vm-chat-time">
+                                {item.timestamp}
+                              </span>
+                            )}
+                          </div>
+                          <p className="vm-chat-text">{item.data}</p>
                         </div>
                       );
                     })
-                  ) : (
-                    <div className="chat-empty-state">
-                      No messages yet. Say hello to everyone in the room!
-                    </div>
                   )}
-                  <div ref={chatEndRef} />
                 </div>
 
-                <form className="chattingArea" onSubmit={sendMessage}>
-                  <input
-                    type="text"
-                    className="chat-native-input"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Send a message to everyone..."
-                  />
-                  <button
-                    type="submit"
-                    className="chat-send-btn"
-                    disabled={!message.trim()}
-                  >
-                    Send
-                  </button>
+                <form className="vm-chat-form" onSubmit={handleSendMessage}>
+                  {/* Recipient Selector */}
+                  {permissions.chatMode === "everyone" || isOrganizer ? (
+                    <div className="vm-chat-recipient-row">
+                      <span>To:</span>
+                      <select
+                        className="vm-recipient-select"
+                        value={chatTarget}
+                        onChange={(e) => setChatTarget(e.target.value)}
+                      >
+                        <option value="everyone">Everyone in Meeting</option>
+                        {sortedParticipants
+                          .filter((p) => p.socketId !== socketIdRef.current)
+                          .map((p) => (
+                            <option key={p.socketId} value={p.socketId}>
+                              {p.name}{" "}
+                              {p.isOrganizer
+                                ? "(Organizer - Direct)"
+                                : "(Direct)"}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  ) : (
+                    permissions.chatMode === "host_only" && (
+                      <div className="vm-chat-recipient-row">
+                        <span>To:</span>
+                        <span className="vm-direct-pill">
+                          Organizer Only (Direct)
+                        </span>
+                      </div>
+                    )
+                  )}
+
+                  <div className="vm-chat-input-row">
+                    <input
+                      type="text"
+                      className="vm-chat-input"
+                      placeholder={
+                        !isOrganizer && permissions.chatMode === "disabled"
+                          ? "Chat disabled by Organizer..."
+                          : "Type a message..."
+                      }
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      disabled={
+                        !isOrganizer && permissions.chatMode === "disabled"
+                      }
+                    />
+                    <button
+                      type="submit"
+                      className="vm-chat-send-btn"
+                      disabled={
+                        !message.trim() ||
+                        (!isOrganizer && permissions.chatMode === "disabled")
+                      }
+                    >
+                      <SendIcon fontSize="small" />
+                    </button>
+                  </div>
                 </form>
-              </aside>
+              </div>
+            )}
+          </aside>
+        )}
+      </div>
+
+      {/* Bottom Floating Control Dock */}
+      <footer className="vm-control-dock">
+        <button
+          type="button"
+          className={`vm-dock-btn ${!audio ? "off" : ""} ${
+            micLocked ? "locked" : ""
+          }`}
+          onClick={() => handleToggleAudio()}
+          title={
+            micLocked
+              ? "Microphone locked by Organizer"
+              : audio
+                ? "Mute Microphone"
+                : "Unmute Microphone"
+          }
+        >
+          {micLocked ? (
+            <LockIcon fontSize="small" />
+          ) : audio ? (
+            <MicIcon />
+          ) : (
+            <MicOffIcon />
+          )}
+          <span>{micLocked ? "Mic Locked" : audio ? "Mute" : "Unmute"}</span>
+        </button>
+
+        <button
+          type="button"
+          className={`vm-dock-btn ${!video ? "off" : ""} ${
+            camLocked ? "locked" : ""
+          }`}
+          onClick={() => handleToggleVideo()}
+          title={
+            camLocked
+              ? "Camera locked by Organizer"
+              : video
+                ? "Turn Off Camera"
+                : "Turn On Camera"
+          }
+        >
+          {camLocked ? (
+            <LockIcon fontSize="small" />
+          ) : video ? (
+            <VideocamIcon />
+          ) : (
+            <VideocamOffIcon />
+          )}
+          <span>
+            {camLocked ? "Cam Locked" : video ? "Stop Video" : "Start Video"}
+          </span>
+        </button>
+
+        {screenAvailable && (
+          <button
+            type="button"
+            className={`vm-dock-btn ${screen ? "active-share" : ""} ${
+              screenLocked ? "locked" : ""
+            }`}
+            onClick={() => handleToggleScreen()}
+          >
+            {screenLocked ? (
+              <LockIcon fontSize="small" />
+            ) : screen ? (
+              <StopScreenShareIcon />
+            ) : (
+              <ScreenShareIcon />
+            )}
+            <span>{screen ? "Stop Share" : "Share"}</span>
+          </button>
+        )}
+
+        <button
+          type="button"
+          className={`vm-dock-btn ${
+            activeSidePanel === "people" ? "panel-open" : ""
+          }`}
+          onClick={() =>
+            setActiveSidePanel(activeSidePanel === "people" ? null : "people")
+          }
+        >
+          <PeopleAltIcon />
+          <span>People ({participants.length})</span>
+        </button>
+
+        <button
+          type="button"
+          className={`vm-dock-btn ${
+            activeSidePanel === "chat" ? "panel-open" : ""
+          }`}
+          onClick={() =>
+            setActiveSidePanel(activeSidePanel === "chat" ? null : "chat")
+          }
+        >
+          <div className="vm-badge-wrap">
+            <ChatIcon />
+            {newMessages > 0 && (
+              <span className="vm-unread-badge">{newMessages}</span>
             )}
           </div>
+          <span>Chat</span>
+        </button>
 
-          <div className="buttonContainer">
-            <button
-              type="button"
-              onClick={toggleCamera}
-              className={`ctrl-btn ${!video ? "is-off" : ""}`}
-              title={video ? "Turn off camera" : "Turn on camera"}
-            >
-              {video ? <VideocamIcon /> : <VideocamOffIcon />}
-            </button>
-
-            <button
-              type="button"
-              onClick={toggleMic}
-              className={`ctrl-btn ${!audio ? "is-off" : ""}`}
-              title={audio ? "Mute microphone" : "Unmute microphone"}
-            >
-              {audio ? <MicIcon /> : <MicOffIcon />}
-            </button>
-
-            {screenAvailable && (
-              <button
-                type="button"
-                onClick={handleScreen}
-                className={`ctrl-btn ${screen ? "is-active" : ""}`}
-                title={screen ? "Stop sharing screen" : "Share screen"}
-              >
-                {screen ? <StopScreenShareIcon /> : <ScreenShareIcon />}
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={handleChat}
-              className={`ctrl-btn ${showModal ? "is-active" : ""}`}
-              title="Toggle chat"
-            >
-              <ChatIcon />
-              {newMessages > 0 && !showModal && (
-                <span className="chat-unread-badge">
-                  {newMessages > 99 ? "99+" : newMessages}
-                </span>
+        {isOrganizer && (
+          <button
+            type="button"
+            className={`vm-dock-btn host-dock-btn ${
+              activeSidePanel === "host" ? "panel-open" : ""
+            }`}
+            onClick={() =>
+              setActiveSidePanel(activeSidePanel === "host" ? null : "host")
+            }
+          >
+            <div className="vm-badge-wrap">
+              <SecurityIcon />
+              {waitingList.length > 0 && (
+                <span className="vm-unread-badge">{waitingList.length}</span>
               )}
-            </button>
+            </div>
+            <span>Host Controls</span>
+          </button>
+        )}
 
-            <button
-              type="button"
-              onClick={handleEndCall}
-              className="ctrl-btn end-call-btn"
-              title="Leave meeting"
-            >
-              <CallEndIcon />
-            </button>
-          </div>
-        </div>
-      )}
-    </>
+        <button
+          type="button"
+          className="vm-dock-btn leave-btn"
+          onClick={handleEndCall}
+        >
+          <CallEndIcon />
+          <span>Leave</span>
+        </button>
+      </footer>
+    </div>
   );
 }
-
-export default VideoMeet;

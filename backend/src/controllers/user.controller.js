@@ -95,31 +95,115 @@ const addToHistory = async (req, res) => {
   }
 }
 
+// GET /api/auth/get_user_profile?token=...
 const getUserProfile = async (req, res) => {
-  const token = req.query.token || req.body.token;
+  const { token } = req.query;
+
+  if (!token) {
+    return res.status(httpStatus.BAD_REQUEST).json({ message: "Token is required" });
+  }
 
   try {
-    if (!token) {
-      return res
-        .status(httpStatus.BAD_REQUEST)
-        .json({ message: "Token required" });
+    const user = await User.findOne({ token }).select("-password");
+    if (!user) {
+      return res.status(httpStatus.NOT_FOUND).json({ message: "User not found" });
+    }
+    return res.status(httpStatus.OK).json({
+      name: user.name,
+      username: user.username,
+    });
+  } catch (e) {
+    return res.status(500).json({ message: `Error fetching profile: ${e.message}` });
+  }
+};
+
+// PUT /api/auth/update_user_profile
+const updateUserProfile = async (req, res) => {
+  const { token, name, username } = req.body;
+
+  if (!token) {
+    return res.status(httpStatus.BAD_REQUEST).json({ message: "Token is required" });
+  }
+
+  try {
+    const user = await User.findOne({ token });
+    if (!user) {
+      return res.status(httpStatus.NOT_FOUND).json({ message: "User not found" });
     }
 
-    const user = await User.findOne({ token });
+    if (name && name.trim()) {
+      user.name = name.trim();
+    }
 
+    if (username && username.trim() && username.trim() !== user.username) {
+      const existingUser = await User.findOne({ username: username.trim() });
+      if (existingUser) {
+        return res.status(httpStatus.CONFLICT).json({ message: "Username is already taken" });
+      }
+      user.username = username.trim();
+    }
+
+    await user.save();
+
+    return res.status(httpStatus.OK).json({
+      message: "Profile updated successfully",
+      user: {
+        name: user.name,
+        username: user.username,
+      },
+    });
+  } catch (e) {
+    return res.status(500).json({ message: `Error updating profile: ${e.message}` });
+  }
+};
+
+// PUT /api/auth/change_password
+const changePassword = async (req, res) => {
+  const { token, currentPassword, newPassword } = req.body;
+
+  if (!token || !currentPassword || !newPassword) {
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json({ message: "All password fields are required" });
+  }
+
+  if (newPassword.length < 6) {
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json({ message: "New password must be at least 6 characters" });
+  }
+
+  try {
+    const user = await User.findOne({ token });
     if (!user) {
       return res
         .status(httpStatus.NOT_FOUND)
         .json({ message: "User not found" });
     }
 
-    return res.status(httpStatus.OK).json({
-      name: user.name,
-      username: user.username,
-    });
+    const isPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+
+    if (!isPasswordValid) {
+      return res
+        .status(httpStatus.UNAUTHORIZED)
+        .json({ message: "Current password is incorrect" });
+    }
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedNewPassword;
+    await user.save();
+
+    return res
+      .status(httpStatus.OK)
+      .json({ message: "Password updated successfully" });
   } catch (e) {
-    return res.status(500).json({ message: `Something went wrong: ${e}` });
+    return res
+      .status(500)
+      .json({ message: `Error changing password: ${e.message}` });
   }
 };
 
-export { register, login, getUserHistory, addToHistory, getUserProfile };
+export { register, login, getUserHistory, addToHistory, getUserProfile, updateUserProfile, changePassword };
