@@ -1,8 +1,18 @@
-import express from "express";
-import { createMeeting } from "../controllers/meeting.controller.js";
+import { Router } from "express";
+import {
+  createMeeting,
+  getUpcomingMeetings,
+  completeMeeting,
+  getMeetingDetails,
+  deleteScheduledMeeting,
+} from "../controllers/meeting.controller.js";
 
-const router = express.Router();
+const router = Router();
 
 router.post("/create", createMeeting);
+router.get("/scheduled", getUpcomingMeetings);
+router.post("/complete/:code", completeMeeting);
+router.get("/details/:code", getMeetingDetails);
+router.delete("/:code", deleteScheduledMeeting);
 
 export default router;

@@ -49,67 +49,75 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const handleLogin = async (username, password) => {
-    try {
-      const request = await client.post("/login", {
-        username,
-        password,
-      });
+const consumePostLoginRedirect = () => {
+  const savedRedirect = sessionStorage.getItem("postLoginRedirect");
+  if (savedRedirect) {
+    sessionStorage.removeItem("postLoginRedirect");
+    return savedRedirect;
+  }
+  return "/home";
+};
 
-      if (request.status === HttpStatusCode.Ok) {
-        localStorage.setItem("token", request.data.token);
-        // Save name if returned by backend, or fetch profile
-        if (request.data.name) {
-          localStorage.setItem("userName", request.data.name);
-          setUserData({
-            name: request.data.name,
-            username: request.data.username,
-          });
-        } else {
-          const profile = await getUserProfile();
-          if (profile) {
-            localStorage.setItem("userName", profile.name);
-            setUserData(profile);
-          }
+const handleLogin = async (username, password) => {
+  try {
+    const request = await client.post("/login", {
+      username,
+      password,
+    });
+
+    if (request.status === HttpStatusCode.Ok) {
+      localStorage.setItem("token", request.data.token);
+      if (request.data.name) {
+        localStorage.setItem("userName", request.data.name);
+        setUserData({
+          name: request.data.name,
+          username: request.data.username || username,
+        });
+      } else {
+        const profile = await getUserProfile();
+        if (profile) {
+          localStorage.setItem("userName", profile.name);
+          setUserData(profile);
         }
-        navigate("/home");
       }
-      return request.data;
-    } catch (error) {
-      console.log(error);
-      throw error;
+      navigate(consumePostLoginRedirect());
     }
-  };
+    return request.data;
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
 
-  const handleGoogleLogin = async (credential) => {
-    try {
-      const request = await client.post("/google-login", {
-        token: credential,
-      });
+const handleGoogleLogin = async (credential) => {
+  try {
+    const request = await client.post("/google-login", {
+      token: credential,
+    });
 
-      if (request.status === HttpStatusCode.Ok && request.data.token) {
-        localStorage.setItem("token", request.data.token);
-        if (request.data.name) {
-          localStorage.setItem("userName", request.data.name);
-          setUserData({
-            name: request.data.name,
-            username: request.data.username,
-          });
-        } else {
-          const profile = await getUserProfile();
-          if (profile) {
-            localStorage.setItem("userName", profile.name);
-            setUserData(profile);
-          }
+    if (request.status === HttpStatusCode.Ok && request.data.token) {
+      localStorage.setItem("token", request.data.token);
+      if (request.data.name) {
+        localStorage.setItem("userName", request.data.name);
+        setUserData({
+          name: request.data.name,
+          username: request.data.username,
+        });
+      } else {
+        const profile = await getUserProfile();
+        if (profile) {
+          localStorage.setItem("userName", profile.name);
+          setUserData(profile);
         }
-        navigate("/home");
       }
-      return request.data;
-    } catch (error) {
-      console.error("Google login backend error:", error);
-      throw error;
+      navigate(consumePostLoginRedirect());
     }
-  };
+    return request.data;
+  } catch (error) {
+    console.error("Google login backend error:", error);
+    throw error;
+  }
+};
 
   const getHistoryOfUser = async () => {
     let request = await client.get("/get_all_activity", {

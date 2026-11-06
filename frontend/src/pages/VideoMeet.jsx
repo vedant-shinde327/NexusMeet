@@ -1,22 +1,23 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import io from "socket.io-client";
-import VideocamIcon from "@mui/icons-material/Videocam";
-import VideocamOffIcon from "@mui/icons-material/VideocamOff";
 import CallEndIcon from "@mui/icons-material/CallEnd";
-import MicIcon from "@mui/icons-material/Mic";
-import MicOffIcon from "@mui/icons-material/MicOff";
-import ScreenShareIcon from "@mui/icons-material/ScreenShare";
-import StopScreenShareIcon from "@mui/icons-material/StopScreenShare";
 import ChatIcon from "@mui/icons-material/Chat";
-import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
-import SecurityIcon from "@mui/icons-material/Security";
-import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
-import LockIcon from "@mui/icons-material/Lock";
-import SendIcon from "@mui/icons-material/Send";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import LockIcon from "@mui/icons-material/Lock";
+import MicIcon from "@mui/icons-material/Mic";
+import MicOffIcon from "@mui/icons-material/MicOff";
+import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
+import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
+import ScreenShareIcon from "@mui/icons-material/ScreenShare";
+import SecurityIcon from "@mui/icons-material/Security";
+import SendIcon from "@mui/icons-material/Send";
+import StopScreenShareIcon from "@mui/icons-material/StopScreenShare";
+import VideocamIcon from "@mui/icons-material/Videocam";
+import VideocamOffIcon from "@mui/icons-material/VideocamOff";
+import axios from "axios";
+import { useContext, useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import io from "socket.io-client";
 import AuthContext from "../contexts/AuthContext";
 import server from "../environment";
 import "./VideoMeet.css";
@@ -185,6 +186,83 @@ export default function VideoMeetComponent() {
   const [toastMessage, setToastMessage] = useState("");
   const [copiedCode, setCopiedCode] = useState(false);
 
+  const [connecting, setConnecting] = useState(false);
+
+  const [meetingTitle, setMeetingTitle] = useState("NexusMeet Session");
+  const [scheduledInfo, setScheduledInfo] = useState(null);
+  const [countdownText, setCountdownText] = useState("");
+
+  function getRoomCode() {
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    return parts[parts.length - 1] || "room";
+  }
+
+  // 2. Enforce Login When Clicking a Shared Meeting Link Directly
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      sessionStorage.setItem("postLoginRedirect", window.location.pathname);
+      navigate("/auth");
+    }
+  }, [navigate]);
+
+  // 3. Fetch Meeting Metadata & Check Schedule on Mount
+  useEffect(() => {
+    const code = getRoomCode();
+    axios
+      .get(`${server}/api/meeting/details/${code}`)
+      .then((res) => {
+        if (res.data?.title) setMeetingTitle(res.data.title);
+      })
+      .catch(() => {});
+  }, []);
+
+  // 4. Adaptive Resolution Scaling for Bulk Participant Load
+  useEffect(() => {
+    if (!localStreamRef.current || screen) return;
+    const videoTrack = localStreamRef.current.getVideoTracks()[0];
+    if (!videoTrack || !videoTrack.applyConstraints) return;
+
+    const peerCount = videos.length + 1;
+    if (peerCount >= 10) {
+      videoTrack
+        .applyConstraints({ width: 480, height: 270, frameRate: 15 })
+        .catch(() => {});
+    } else if (peerCount >= 5) {
+      videoTrack
+        .applyConstraints({ width: 640, height: 360, frameRate: 20 })
+        .catch(() => {});
+    } else {
+      videoTrack
+        .applyConstraints({ width: 1280, height: 720, frameRate: 30 })
+        .catch(() => {});
+    }
+  }, [videos.length, screen]);
+
+  // 5. Live Countdown Timer if Participant Arrives Before Scheduled Time
+  useEffect(() => {
+    if (!scheduledInfo?.scheduledAt) return;
+    const interval = setInterval(() => {
+      const diff = new Date(scheduledInfo.scheduledAt).getTime() - Date.now();
+      if (diff <= 5 * 60 * 1000) {
+        clearInterval(interval);
+        setScheduledInfo(null);
+        connectToSocketServer();
+        return;
+      }
+      const hrs = Math.floor(diff / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((diff % (1000 * 60)) / 1000);
+      setCountdownText(
+        `${String(hrs).padStart(2, "0")}h ${String(mins).padStart(
+          2,
+          "0",
+        )}m ${String(secs).padStart(2, "0")}s`,
+      );
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [scheduledInfo]);
+
   const activeSidePanelRef = useRef(activeSidePanel);
   useEffect(() => {
     activeSidePanelRef.current = activeSidePanel;
@@ -224,7 +302,6 @@ export default function VideoMeetComponent() {
           localVideoref.current.srcObject = stream;
         }
       } catch (err) {
-        // Fallback if camera or mic is individually blocked
         try {
           const audioOnly = await navigator.mediaDevices.getUserMedia({
             video: false,
@@ -256,7 +333,6 @@ export default function VideoMeetComponent() {
     };
   }, []);
 
-  // Re-attach local video stream whenever user switches from Lobby to Meeting stage
   useEffect(() => {
     if (
       !askForUsername &&
@@ -268,27 +344,6 @@ export default function VideoMeetComponent() {
     }
   }, [askForUsername, waitingForApproval, video]);
 
-  // Helper: Create silent/black fallback stream if tracks are off
-  const createSilenceTrack = () => {
-    const ctx = new AudioContext();
-    const oscillator = ctx.createOscillator();
-    const dst = oscillator.connect(ctx.createMediaStreamDestination());
-    oscillator.start();
-    ctx.resume();
-    return Object.assign(dst.stream.getAudioTracks()[0], { enabled: false });
-  };
-
-  const createBlackTrack = ({ width = 640, height = 480 } = {}) => {
-    const canvas = Object.assign(document.createElement("canvas"), {
-      width,
-      height,
-    });
-    canvas.getContext("2d").fillRect(0, 0, width, height);
-    const stream = canvas.captureStream();
-    return Object.assign(stream.getVideoTracks()[0], { enabled: false });
-  };
-
-  // Replace tracks on all existing RTCPeerConnections
   const syncStreamToPeers = (newStream) => {
     Object.entries(connectionsRef.current).forEach(([id, pc]) => {
       if (id === socketIdRef.current) return;
@@ -307,7 +362,6 @@ export default function VideoMeetComponent() {
     });
   };
 
-  // Toggle Microphone smoothly without dropping WebRTC connections
   const handleToggleAudio = (forcedState) => {
     const nextAudio = typeof forcedState === "boolean" ? forcedState : !audio;
 
@@ -331,7 +385,6 @@ export default function VideoMeetComponent() {
     }
   };
 
-  // Toggle Camera smoothly
   const handleToggleVideo = async (forcedState) => {
     const nextVideo = typeof forcedState === "boolean" ? forcedState : !video;
 
@@ -366,7 +419,6 @@ export default function VideoMeetComponent() {
     }
   };
 
-  // Toggle Screen Share
   const handleToggleScreen = async (forcedOff = false) => {
     const nextScreen = forcedOff ? false : !screen;
 
@@ -419,7 +471,6 @@ export default function VideoMeetComponent() {
     }
   };
 
-  // WebRTC Signaling Handler
   const gotMessageFromServer = (fromId, message) => {
     const signal = JSON.parse(message);
     if (fromId === socketIdRef.current) return;
@@ -454,25 +505,62 @@ export default function VideoMeetComponent() {
     }
   };
 
-  // Connect to Socket.IO Server
+  // Connect to Socket.IO Server (Guarded against infinite reconnect loops)
   const connectToSocketServer = () => {
-    socketRef.current = io.connect(server, { secure: false });
+    if (socketRef.current) {
+      socketRef.current.removeAllListeners();
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+
+    setConnecting(true);
+    setDeniedMessage("");
+
+    socketRef.current = io(server, {
+      secure: server.startsWith("https"),
+      transports: ["websocket", "polling"],
+      reconnectionAttempts: 3,
+      reconnectionDelay: 1500,
+      timeout: 8000,
+    });
+
+    socketRef.current.on("connect_error", (err) => {
+      console.error("Socket connection error:", err.message);
+      setConnecting(false);
+      setDeniedMessage(
+        `Cannot reach signaling server (${server}). Make sure your backend server is running on port 8000.`,
+      );
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    });
 
     socketRef.current.on("signal", gotMessageFromServer);
 
     socketRef.current.on("connect", () => {
+      setConnecting(false);
       socketIdRef.current = socketRef.current.id;
       const userKey =
-        userData?.username || localStorage.getItem("token") || username.trim();
+        userData?.username ||
+        localStorage.getItem("userName") ||
+        username.trim();
 
       socketRef.current.emit("request-join-call", {
         path: window.location.href,
         name: username.trim() || "Participant",
         userKey,
+        token: localStorage.getItem("token"),
         isNewMeeting: Boolean(location.state?.isNewMeeting),
         audio,
         video,
       });
+    });
+
+    socketRef.current.on("meeting-not-started", (info) => {
+      setWaitingForApproval(false);
+      setAskForUsername(false);
+      setScheduledInfo(info);
+      socketRef.current?.disconnect();
     });
 
     socketRef.current.on("waiting-for-host", () => {
@@ -496,7 +584,6 @@ export default function VideoMeetComponent() {
       setOrganizerSocketId(payload.organizerSocketId);
       if (payload.permissions) {
         setPermissions(payload.permissions);
-        // Enforce initial room locks if not organizer
         if (!payload.isOrganizer) {
           if (!payload.permissions.allowMic) handleToggleAudio(false);
           if (!payload.permissions.allowCam) handleToggleVideo(false);
@@ -639,7 +726,6 @@ export default function VideoMeetComponent() {
           });
         };
 
-        // Attach local stream tracks
         if (!localStreamRef.current) {
           localStreamRef.current = new MediaStream([
             createBlackTrack(),
@@ -671,7 +757,6 @@ export default function VideoMeetComponent() {
     });
   };
 
-  // Join Meeting Button Handler
   const handleConnect = (e) => {
     if (e) e.preventDefault();
     if (!username.trim()) return;
@@ -679,8 +764,10 @@ export default function VideoMeetComponent() {
     connectToSocketServer();
   };
 
-  // Leave Meeting Handler
-  const handleEndCall = () => {
+  const handleEndCall = async () => {
+    const code = getRoomCode();
+    const token = localStorage.getItem("token");
+
     try {
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -688,14 +775,18 @@ export default function VideoMeetComponent() {
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
+      if (token) {
+        localStorage.removeItem("nexus_scheduled_meetings");
+        localStorage.removeItem(`nexus_scheduled_${token}`);
+        await axios.post(`${server}/api/meeting/complete/${code}`, { token });
+      }
     } catch (e) {
       console.error(e);
     }
-    const hasToken = Boolean(localStorage.getItem("token"));
-    navigate(hasToken ? "/home" : "/");
+
+    navigate(token ? "/home" : "/");
   };
 
-  // Organizer Moderation Calls
   const handleUpdatePermission = (patch) => {
     if (!isOrganizer || !socketRef.current) return;
     socketRef.current.emit("host-update-permissions", patch);
@@ -717,13 +808,11 @@ export default function VideoMeetComponent() {
     });
   };
 
-  // Open Direct Chat to a Specific Participant
   const openDirectChatWith = (targetSid) => {
     setChatTarget(targetSid);
     setActiveSidePanel("chat");
   };
 
-  // Send Chat Message
   const handleSendMessage = (e) => {
     if (e) e.preventDefault();
     if (!message.trim() || !socketRef.current) return;
@@ -741,13 +830,9 @@ export default function VideoMeetComponent() {
     setMessage("");
   };
 
-  const getRoomCode = () => {
-    const parts = window.location.pathname.split("/").filter(Boolean);
-    return parts[parts.length - 1] || "room";
-  };
-
   const copyMeetingCode = () => {
-    navigator.clipboard.writeText(getRoomCode());
+    const fullUrl = `${window.location.origin}/meeting/${getRoomCode()}`;
+    navigator.clipboard.writeText(fullUrl);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
   };
@@ -758,16 +843,66 @@ export default function VideoMeetComponent() {
     return (fullName || "U").substring(0, 2).toUpperCase();
   };
 
-  // Map participants by socketId for fast lookup
   const participantMap = participants.reduce((acc, p) => {
     acc[p.socketId] = p;
     return acc;
   }, {});
 
-  // Sort participants so Organizer is always listed first
   const sortedParticipants = [...participants].sort((a, b) =>
     a.isOrganizer === b.isOrganizer ? 0 : a.isOrganizer ? -1 : 1,
   );
+
+  // ── 0. SCHEDULED MEETING NOT STARTED YET VIEW ──
+  if (scheduledInfo) {
+    return (
+      <div className="vm-lobby-wrapper">
+        <div className="vm-waiting-card">
+          <div className="vm-lobby-badge">Scheduled Session</div>
+          <h2>{scheduledInfo.title || meetingTitle}</h2>
+          <p>{scheduledInfo.message}</p>
+          <div className="vm-schedule-readout">
+            <span>
+              Starts at:{" "}
+              <strong>
+                {new Date(scheduledInfo.scheduledAt).toLocaleString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </strong>
+            </span>
+            {countdownText && (
+              <span className="vm-countdown-pill">
+                Opens in {countdownText}
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+            <button
+              type="button"
+              className="vm-lobby-join-btn"
+              style={{ padding: "0 16px", height: "36px" }}
+              onClick={() => {
+                setScheduledInfo(null);
+                connectToSocketServer();
+              }}
+            >
+              Retry now
+            </button>
+            <button
+              type="button"
+              className="vm-btn-leave-lobby"
+              onClick={handleEndCall}
+            >
+              Back to dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── 1. WAITING ROOM VIEW ──
   if (waitingForApproval) {
@@ -864,11 +999,13 @@ export default function VideoMeetComponent() {
             <button
               type="submit"
               className="vm-lobby-join-btn"
-              disabled={!username.trim()}
+              disabled={!username.trim() || connecting}
             >
-              {location.state?.isNewMeeting
-                ? "Start Meeting as Organizer"
-                : "Join Meeting"}
+              {connecting
+                ? "Connecting to room..."
+                : location.state?.isNewMeeting
+                  ? "Start Meeting as Organizer"
+                  : "Join Meeting"}
             </button>
           </form>
         </div>

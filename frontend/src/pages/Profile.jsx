@@ -1,5 +1,5 @@
 import HomeIcon from "@mui/icons-material/Home";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import LockOutlinedIcon from "@mui/icons-material/Lock";
 import LogoutIcon from "@mui/icons-material/Logout";
 import RestoreIcon from "@mui/icons-material/Restore";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";

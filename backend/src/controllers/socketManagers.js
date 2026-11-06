@@ -1,16 +1,13 @@
 import { Server } from "socket.io";
+import Meeting from "../models/meeting.model.js";
+import { User } from "../models/users.model.js";
 
-// Authoritative in-memory room store
-// rooms[roomId] = {
-//   organizerSocketId: string,
-//   organizerKey: string,
-//   permissions: { allowMic, allowCam, allowScreen, chatMode, waitingRoomEnabled },
-//   participants: { [socketId]: { socketId, name, userKey, isOrganizer, audio, video, screen } },
-//   waitingList: { [socketId]: { socketId, name, userKey } },
-//   messages: []
-// }
+const MAX_PARTICIPANTS_PER_ROOM = 30;
+const EARLY_JOIN_WINDOW_MS = 5 * 60 * 1000; // Participants can enter lobby 5 mins before scheduled time
+
 const rooms = {};
 const socketToRoom = {};
+const syncTimers = {}; // Debounce timers per roomId for bulk join bursts
 
 const getRoomPath = (rawPath = "") => {
   try {
@@ -22,42 +19,71 @@ const getRoomPath = (rawPath = "") => {
   }
 };
 
-const ensureRoom = (roomId) => {
-  if (!rooms[roomId]) {
-    rooms[roomId] = {
-      organizerSocketId: null,
-      organizerKey: null,
-      permissions: {
-        allowMic: true,
-        allowCam: true,
-        allowScreen: true,
-        chatMode: "everyone", // "everyone" | "host_only" | "disabled"
-        waitingRoomEnabled: true,
-      },
-      participants: {},
-      waitingList: {},
-      messages: [],
-    };
+// Loads room metadata from MongoDB once and caches in memory
+const ensureRoomLoaded = async (roomId) => {
+  if (rooms[roomId]) return rooms[roomId];
+
+  let dbMeeting = null;
+  try {
+    dbMeeting = await Meeting.findOne({ meetingCode: roomId }).lean();
+  } catch (e) {
+    console.error("Meeting DB lookup error:", e);
   }
+
+  if (rooms[roomId]) return rooms[roomId];
+
+  rooms[roomId] = {
+    roomId,
+    title: dbMeeting?.title || "NexusMeet Session",
+    scheduledAt: dbMeeting?.scheduledAt
+      ? new Date(dbMeeting.scheduledAt)
+      : null,
+    isScheduled: Boolean(dbMeeting?.isScheduled),
+    organizerSocketId: null,
+    organizerKey: dbMeeting?.user_id || null,
+    organizerName: dbMeeting?.organizerName || "Organizer",
+    permissions: {
+      allowMic: true,
+      allowCam: true,
+      allowScreen: true,
+      chatMode: "everyone",
+      waitingRoomEnabled:
+        dbMeeting?.waitingRoomEnabled !== undefined
+          ? Boolean(dbMeeting.waitingRoomEnabled)
+          : true,
+    },
+    participants: {},
+    waitingList: {},
+    messages: [],
+  };
+
   return rooms[roomId];
 };
 
-const broadcastRoomState = (io, roomId) => {
-  const room = rooms[roomId];
-  if (!room) return;
+// Coalesces rapid bursts of joins/updates into a single broadcast per 150ms
+const scheduleRoomSync = (io, roomId) => {
+  if (syncTimers[roomId]) return;
 
-  const participantList = Object.values(room.participants);
-  const waitingArray = Object.values(room.waitingList);
+  syncTimers[roomId] = setTimeout(() => {
+    delete syncTimers[roomId];
+    const room = rooms[roomId];
+    if (!room) return;
 
-  Object.keys(room.participants).forEach((sid) => {
-    const isHost = sid === room.organizerSocketId;
-    io.to(sid).emit("room-state-sync", {
-      organizerSocketId: room.organizerSocketId,
-      permissions: room.permissions,
-      participants: participantList,
-      waitingList: isHost ? waitingArray : [],
+    const participantList = Object.values(room.participants);
+    const waitingArray = Object.values(room.waitingList);
+
+    Object.keys(room.participants).forEach((sid) => {
+      const isHost = sid === room.organizerSocketId;
+      io.to(sid).emit("room-state-sync", {
+        title: room.title,
+        scheduledAt: room.scheduledAt,
+        organizerSocketId: room.organizerSocketId,
+        permissions: room.permissions,
+        participants: participantList,
+        waitingList: isHost ? waitingArray : [],
+      });
     });
-  });
+  }, 150);
 };
 
 export const connectToSocket = (server) => {
@@ -68,17 +94,28 @@ export const connectToSocket = (server) => {
       allowedHeaders: ["*"],
       credentials: true,
     },
+    pingTimeout: 30000,
+    pingInterval: 10000,
+    maxHttpBufferSize: 1e6,
   });
 
-  // Helper to admit a user into the active WebRTC room
   const admitParticipantToRoom = (socket, roomId, userMeta) => {
-    const room = ensureRoom(roomId);
+    const room = rooms[roomId];
+    if (!room) return;
+
+    const activeCount = Object.keys(room.participants).length;
+    if (activeCount >= MAX_PARTICIPANTS_PER_ROOM && !userMeta.isOrganizer) {
+      socket.emit("join-denied", {
+        message: `This room has reached its maximum capacity (${MAX_PARTICIPANTS_PER_ROOM} participants).`,
+      });
+      return;
+    }
+
     const { name, userKey, isOrganizer, audio = true, video = true } = userMeta;
 
     delete room.waitingList[socket.id];
     socketToRoom[socket.id] = roomId;
 
-    // Enforce room permission locks on non-organizers upon entry
     const finalAudio = isOrganizer ? audio : room.permissions.allowMic && audio;
     const finalVideo = isOrganizer ? video : room.permissions.allowCam && video;
 
@@ -95,9 +132,10 @@ export const connectToSocket = (server) => {
     const existingSocketIds = Object.keys(room.participants);
     const participantList = Object.values(room.participants);
 
-    // Tell the admitted user they are in
     io.to(socket.id).emit("join-accepted", {
       socketId: socket.id,
+      title: room.title,
+      scheduledAt: room.scheduledAt,
       isOrganizer: Boolean(isOrganizer),
       organizerSocketId: room.organizerSocketId,
       permissions: room.permissions,
@@ -111,7 +149,6 @@ export const connectToSocket = (server) => {
       ),
     });
 
-    // Notify all participants in the room to establish WebRTC peer connections
     existingSocketIds.forEach((peerSocketId) => {
       io.to(peerSocketId).emit(
         "user-joined",
@@ -121,35 +158,53 @@ export const connectToSocket = (server) => {
       );
     });
 
-    broadcastRoomState(io, roomId);
+    scheduleRoomSync(io, roomId);
   };
 
   io.on("connection", (socket) => {
-    // 1. Join Request (Handles Organizer assignment & Waiting Room)
-    socket.on("request-join-call", (payload) => {
+    socket.on("request-join-call", async (payload) => {
       const rawPath = typeof payload === "string" ? payload : payload?.path;
       const roomId = getRoomPath(rawPath);
-      const name = (payload?.name || "Participant").trim();
-      const userKey = payload?.userKey || name;
+      let name = (payload?.name || "Participant").trim();
+      let userKey = payload?.userKey || name;
+      const token =
+        typeof payload === "object" && payload !== null
+          ? payload.token || null
+          : null;
       const wantsOrganizer = Boolean(payload?.isNewMeeting);
       const initialAudio = payload?.audio !== undefined ? payload.audio : true;
       const initialVideo = payload?.video !== undefined ? payload.video : true;
 
-      const room = ensureRoom(roomId);
+      // Resolve token to DB username so the Organizer is always recognized
+      if (token) {
+        try {
+          const dbUser = await User.findOne({ token })
+            .select("username name")
+            .lean();
+          if (dbUser) {
+            if (dbUser.username) userKey = dbUser.username;
+            if ((!name || name === "Participant") && dbUser.name) {
+              name = dbUser.name;
+            }
+          }
+        } catch (err) {
+          console.error("Token lookup error in socket:", err);
+        }
+      }
+
+      const room = await ensureRoomLoaded(roomId);
       socketToRoom[socket.id] = roomId;
 
-      // Determine if this user is the Organizer:
-      // 1) Room has no organizer yet, OR
-      // 2) User created the meeting (wantsOrganizer) and no active organizer is present, OR
-      // 3) Returning organizer after page refresh (matching organizerKey)
       let isOrganizer = false;
       const activeOrganizerPresent =
         room.organizerSocketId && room.participants[room.organizerSocketId];
 
-      if (!room.organizerKey) {
-        room.organizerKey = userKey;
-        room.organizerSocketId = socket.id;
-        isOrganizer = true;
+      if (!room.organizerKey || room.organizerKey === "guest-organizer") {
+        if (!activeOrganizerPresent) {
+          room.organizerKey = userKey;
+          room.organizerSocketId = socket.id;
+          isOrganizer = true;
+        }
       } else if (room.organizerKey === userKey) {
         room.organizerSocketId = socket.id;
         isOrganizer = true;
@@ -157,6 +212,22 @@ export const connectToSocket = (server) => {
         room.organizerKey = userKey;
         room.organizerSocketId = socket.id;
         isOrganizer = true;
+      }
+
+      // Check Scheduled Start Time Gate for non-organizers
+      if (room.isScheduled && room.scheduledAt && !isOrganizer) {
+        const now = Date.now();
+        const startMs = new Date(room.scheduledAt).getTime();
+        if (now < startMs - EARLY_JOIN_WINDOW_MS) {
+          socket.emit("meeting-not-started", {
+            title: room.title,
+            scheduledAt: room.scheduledAt,
+            organizerName: room.organizerName,
+            message:
+              "This meeting has not started yet. You can join 5 minutes before the scheduled start time.",
+          });
+          return;
+        }
       }
 
       // If Organizer OR waiting room is disabled, admit immediately
@@ -171,7 +242,7 @@ export const connectToSocket = (server) => {
         return;
       }
 
-      // Otherwise place in Waiting Room
+      // Place in Waiting Room
       room.waitingList[socket.id] = {
         socketId: socket.id,
         name,
@@ -182,7 +253,8 @@ export const connectToSocket = (server) => {
       };
 
       socket.emit("waiting-for-host", {
-        message: "Waiting for the Organizer to let you in...",
+        title: room.title,
+        message: "Waiting for the Organizer to admit you...",
       });
 
       if (room.organizerSocketId) {
@@ -193,56 +265,31 @@ export const connectToSocket = (server) => {
         });
       }
 
-      broadcastRoomState(io, roomId);
+      scheduleRoomSync(io, roomId);
     });
 
-    // Legacy fallback if "join-call" is emitted directly
-    socket.on("join-call", (pathOrPayload) => {
-      const rawPath =
-        typeof pathOrPayload === "string" ? pathOrPayload : pathOrPayload?.path;
-      const roomId = getRoomPath(rawPath);
-      const room = ensureRoom(roomId);
-
-      // If already admitted via request-join-call, just sync state
-      if (room.participants[socket.id]) {
-        broadcastRoomState(io, roomId);
-        return;
-      }
-
-      const isFirst = !room.organizerSocketId;
-      if (isFirst) {
-        room.organizerSocketId = socket.id;
-        room.organizerKey = socket.id;
-      }
-
-      admitParticipantToRoom(socket, roomId, {
-        name: pathOrPayload?.name || "Participant",
-        userKey: socket.id,
-        isOrganizer: isFirst,
-        audio: true,
-        video: true,
-      });
-    });
-
-    // 2. Organizer Admits or Denies Waiting Room Participant
+    // Bulk & Individual Waiting Room Approval
     socket.on("host-handle-waiting", ({ targetSocketId, action }) => {
       const roomId = socketToRoom[socket.id];
       const room = rooms[roomId];
       if (!room || room.organizerSocketId !== socket.id) return;
 
       if (action === "admit-all") {
-        Object.values(room.waitingList).forEach((waitingUser) => {
-          const targetSocket = io.sockets.sockets.get(waitingUser.socketId);
-          if (targetSocket) {
-            admitParticipantToRoom(targetSocket, roomId, {
-              ...waitingUser,
-              isOrganizer: false,
-            });
-          } else {
-            delete room.waitingList[waitingUser.socketId];
-          }
+        const waitingUsers = Object.values(room.waitingList);
+        waitingUsers.forEach((waitingUser, index) => {
+          setTimeout(() => {
+            const targetSocket = io.sockets.sockets.get(waitingUser.socketId);
+            if (targetSocket && rooms[roomId]) {
+              admitParticipantToRoom(targetSocket, roomId, {
+                ...waitingUser,
+                isOrganizer: false,
+              });
+            } else if (rooms[roomId]) {
+              delete rooms[roomId].waitingList[waitingUser.socketId];
+            }
+          }, index * 40);
         });
-        broadcastRoomState(io, roomId);
+        scheduleRoomSync(io, roomId);
         return;
       }
 
@@ -267,15 +314,13 @@ export const connectToSocket = (server) => {
         });
       }
 
-      broadcastRoomState(io, roomId);
+      scheduleRoomSync(io, roomId);
     });
 
-    // 3. WebRTC Signaling Relay
     socket.on("signal", (toId, message) => {
       io.to(toId).emit("signal", socket.id, message);
     });
 
-    // 4. Participant Media State Update (Mic / Cam / Screen toggles)
     socket.on("media-state-change", ({ audio, video, screen }) => {
       const roomId = socketToRoom[socket.id];
       const room = rooms[roomId];
@@ -300,10 +345,9 @@ export const connectToSocket = (server) => {
           : Boolean(screen && room.permissions.allowScreen);
       }
 
-      broadcastRoomState(io, roomId);
+      scheduleRoomSync(io, roomId);
     });
 
-    // 5. Organizer Updates Room Permissions (Locks for Mic, Cam, Screen, Chat, Waiting Room)
     socket.on("host-update-permissions", (newPermissions) => {
       const roomId = socketToRoom[socket.id];
       const room = rooms[roomId];
@@ -314,7 +358,6 @@ export const connectToSocket = (server) => {
         ...newPermissions,
       };
 
-      // Enforce locks immediately on all non-organizer participants
       Object.values(room.participants).forEach((p) => {
         if (p.isOrganizer) return;
 
@@ -343,10 +386,9 @@ export const connectToSocket = (server) => {
         }
       });
 
-      broadcastRoomState(io, roomId);
+      scheduleRoomSync(io, roomId);
     });
 
-    // 6. Organizer Direct Moderation Actions (Mute individual/all, Disable Cam, Kick, End Meeting)
     socket.on("host-moderate-participant", ({ targetSocketId, action }) => {
       const roomId = socketToRoom[socket.id];
       const room = rooms[roomId];
@@ -362,11 +404,16 @@ export const connectToSocket = (server) => {
             });
           }
         });
-        broadcastRoomState(io, roomId);
+        scheduleRoomSync(io, roomId);
         return;
       }
 
       if (action === "end-meeting-for-all") {
+        Meeting.updateMany(
+          { meetingCode: roomId },
+          { $set: { status: "completed", isScheduled: false } },
+        ).catch(() => {});
+
         Object.keys(room.participants).forEach((sid) => {
           io.to(sid).emit("meeting-ended-by-host", {
             message: "The Organizer has ended the meeting for everyone.",
@@ -379,6 +426,10 @@ export const connectToSocket = (server) => {
           });
           delete socketToRoom[sid];
         });
+        if (syncTimers[roomId]) {
+          clearTimeout(syncTimers[roomId]);
+          delete syncTimers[roomId];
+        }
         delete rooms[roomId];
         return;
       }
@@ -417,10 +468,9 @@ export const connectToSocket = (server) => {
         });
       }
 
-      broadcastRoomState(io, roomId);
+      scheduleRoomSync(io, roomId);
     });
 
-    // 7. Chat System (Supports Everyone, Direct-to-Host Only, Private DM, and Disabled)
     socket.on("chat-message", (data, senderName, options = {}) => {
       const roomId = socketToRoom[socket.id];
       const room = rooms[roomId];
@@ -430,7 +480,6 @@ export const connectToSocket = (server) => {
       const isHost = sender.isOrganizer;
       const { chatMode } = room.permissions;
 
-      // Block non-hosts when chat is disabled
       if (chatMode === "disabled" && !isHost) {
         socket.emit("host-enforced-action", {
           type: "chat-blocked",
@@ -445,13 +494,11 @@ export const connectToSocket = (server) => {
       let recipientName = "Everyone";
 
       if (chatMode === "host_only" && !isHost) {
-        // Force participant messages directly to the Organizer only
         scope = "direct";
         recipientSocketId = room.organizerSocketId;
         recipientName =
           room.participants[room.organizerSocketId]?.name || "Organizer";
       } else if (requestedToSocketId && requestedToSocketId !== "everyone") {
-        // Explicit Direct Message
         scope = "direct";
         recipientSocketId = requestedToSocketId;
         recipientName =
@@ -464,7 +511,7 @@ export const connectToSocket = (server) => {
         senderSocketId: socket.id,
         isOrganizer: isHost,
         data,
-        scope, // "everyone" | "direct"
+        scope,
         toSocketId: recipientSocketId,
         toName: recipientName,
         timestamp: new Date().toLocaleTimeString([], {
@@ -476,7 +523,6 @@ export const connectToSocket = (server) => {
       room.messages.push(msgPayload);
 
       if (scope === "direct" && recipientSocketId) {
-        // Deliver only to recipient and sender
         io.to(recipientSocketId).emit(
           "chat-message",
           data,
@@ -494,7 +540,6 @@ export const connectToSocket = (server) => {
           );
         }
       } else {
-        // Broadcast to everyone in the room
         Object.keys(room.participants).forEach((sid) => {
           io.to(sid).emit(
             "chat-message",
@@ -507,14 +552,12 @@ export const connectToSocket = (server) => {
       }
     });
 
-    // 8. Disconnect Cleanup
     socket.on("disconnect", () => {
       const roomId = socketToRoom[socket.id];
       delete socketToRoom[socket.id];
       if (!roomId || !rooms[roomId]) return;
 
       const room = rooms[roomId];
-      const wasWaiting = Boolean(room.waitingList[socket.id]);
       delete room.waitingList[socket.id];
 
       if (room.participants[socket.id]) {
@@ -525,10 +568,12 @@ export const connectToSocket = (server) => {
           io.to(sid).emit("user-left", socket.id);
         });
 
-        // If the organizer disconnected and didn't end the meeting, keep their organizerKey
-        // so if they refresh, they automatically reclaim Organizer status.
         if (wasOrganizer) {
           room.organizerSocketId = null;
+          Meeting.updateMany(
+            { meetingCode: roomId },
+            { $set: { status: "completed", isScheduled: false } },
+          ).catch(() => {});
         }
       }
 
@@ -536,9 +581,13 @@ export const connectToSocket = (server) => {
         Object.keys(room.participants).length === 0 &&
         Object.keys(room.waitingList).length === 0
       ) {
+        if (syncTimers[roomId]) {
+          clearTimeout(syncTimers[roomId]);
+          delete syncTimers[roomId];
+        }
         delete rooms[roomId];
-      } else if (wasWaiting || room.participants) {
-        broadcastRoomState(io, roomId);
+      } else {
+        scheduleRoomSync(io, roomId);
       }
     });
   });

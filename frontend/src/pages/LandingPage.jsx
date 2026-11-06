@@ -2,6 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Logo1 from "../../public/favicon.svg";
 import "../App.css";
+import MicNoneOutlinedIcon from "@mui/icons-material/Mic";
+import MicOffOutlinedIcon from "@mui/icons-material/MicOff";
+import VideocamOutlinedIcon from "@mui/icons-material/Videocam";
+import PresentToAllOutlinedIcon from "@mui/icons-material/ScreenShare";
+import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/Chat";
+import CallEndOutlinedIcon from "@mui/icons-material/CallEnd";
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -116,58 +122,65 @@ export default function LandingPage() {
         </div>
 
         <div className="landing-hero-visual">
-          <div className="landing-glow-backdrop" />
-
-          {/* Simulated Video Call UI Preview Card */}
-          <div className="hero-mockup-container">
-            <div className="hero-mockup-header">
-              <span className="mockup-dot red" />
-              <span className="mockup-dot yellow" />
-              <span className="mockup-dot green" />
-              <span className="mockup-room-title">
-                nexusmeet.app/room/ux-sync
-              </span>
+          <div className="landing-app-mockup">
+            <div className="mockup-top-bar">
+              <div className="mockup-dots">
+                <span className="dot" />
+                <span className="dot" />
+                <span className="dot" />
+              </div>
+              <div className="mockup-url">nexusmeet.app/ux-review</div>
+              <div className="mockup-badge-live">22ms · 1080p</div>
             </div>
 
-            <div className="hero-mockup-grid">
-              {/* Tile 1 */}
-              <div className="mockup-tile">
-                <div className="mockup-avatar gradient-1">JS</div>
-                <span className="mockup-tag">Jessica (Host)</span>
-                <div className="mockup-mic active">🎤</div>
+            <div className="mockup-video-grid">
+              <div className="mockup-video-tile active-speaker">
+                <div className="mockup-avatar">JS</div>
+                <span className="mockup-name-tag">Jessica · Organizer</span>
+                <span className="mockup-mic-icon">
+                  <MicNoneOutlinedIcon style={{ fontSize: 13 }} />
+                </span>
               </div>
-
-              {/* Tile 2 */}
-              <div className="mockup-tile">
-                <div className="mockup-avatar gradient-2">VR</div>
-                <span className="mockup-tag">Vedant</span>
-                <div className="mockup-mic active">🎤</div>
+              <div className="mockup-video-tile">
+                <div className="mockup-avatar">VS</div>
+                <span className="mockup-name-tag">Vedant</span>
+                <span className="mockup-mic-icon">
+                  <MicNoneOutlinedIcon style={{ fontSize: 13 }} />
+                </span>
               </div>
-
-              {/* Tile 3 */}
-              <div className="mockup-tile">
-                <div className="mockup-avatar gradient-3">AK</div>
-                <span className="mockup-tag">Aarav</span>
-                <div className="mockup-mic muted">🔇</div>
+              <div className="mockup-video-tile">
+                <div className="mockup-avatar">AK</div>
+                <span className="mockup-name-tag">Aarav</span>
+                <span className="mockup-mic-icon muted">
+                  <MicOffOutlinedIcon style={{ fontSize: 13 }} />
+                </span>
               </div>
-
-              {/* Tile 4 (Screen share preview simulation) */}
-              <div className="mockup-tile screen-share-tile">
-                <div className="screen-share-content">
-                  <div className="mini-code-line" />
-                  <div className="mini-code-line short" />
-                  <div className="mini-code-line medium" />
+              <div className="mockup-video-tile screen-tile">
+                <div className="screen-preview-content">
+                  <div className="screen-bar" />
+                  <div className="screen-line" />
+                  <div className="screen-line l2" />
                 </div>
-                <span className="mockup-tag">Screen Share</span>
+                <span className="mockup-name-tag">Screen Share</span>
               </div>
             </div>
 
-            <div className="hero-mockup-toolbar">
-              <span className="mockup-tool-btn active">📹</span>
-              <span className="mockup-tool-btn active">🎙️</span>
-              <span className="mockup-tool-btn">💻</span>
-              <span className="mockup-tool-btn">💬</span>
-              <span className="mockup-tool-btn danger">📞</span>
+            <div className="mockup-control-bar">
+              <span className="mockup-ctrl-btn">
+                <MicNoneOutlinedIcon style={{ fontSize: 16 }} />
+              </span>
+              <span className="mockup-ctrl-btn">
+                <VideocamOutlinedIcon style={{ fontSize: 16 }} />
+              </span>
+              <span className="mockup-ctrl-btn">
+                <PresentToAllOutlinedIcon style={{ fontSize: 16 }} />
+              </span>
+              <span className="mockup-ctrl-btn">
+                <ChatBubbleOutlineOutlinedIcon style={{ fontSize: 15 }} />
+              </span>
+              <span className="mockup-ctrl-btn end">
+                <CallEndOutlinedIcon style={{ fontSize: 16 }} />
+              </span>
             </div>
           </div>
         </div>
