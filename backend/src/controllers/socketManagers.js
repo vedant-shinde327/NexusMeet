@@ -340,9 +340,17 @@ export const connectToSocket = (server) => {
           : Boolean(video && room.permissions.allowCam);
       }
       if (screen !== undefined) {
-        participant.screen = isHost
+        const nextScreen = isHost
           ? Boolean(screen)
           : Boolean(screen && room.permissions.allowScreen);
+
+        if (nextScreen) {
+          // Ensure only one active presenter flag at a time
+          Object.values(room.participants).forEach((p) => {
+            if (p.socketId !== socket.id) p.screen = false;
+          });
+        }
+        participant.screen = nextScreen;
       }
 
       scheduleRoomSync(io, roomId);

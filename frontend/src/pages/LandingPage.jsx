@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
+import { isSessionValid } from "../utils/withAuth";
 import Logo1 from "../../public/favicon.svg";
 import "../App.css";
 import MicNoneOutlinedIcon from "@mui/icons-material/Mic";
@@ -26,6 +27,10 @@ export default function LandingPage() {
     const randomCode = Math.random().toString(36).substring(2, 10);
     navigate(`/meeting/${randomCode}`, { state: { isNewMeeting: true } });
   };
+
+  if (isSessionValid()) {
+    return <Navigate to="/home" replace />;
+  }
 
   return (
     <div className="landing-page">

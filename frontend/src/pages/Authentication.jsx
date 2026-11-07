@@ -1,5 +1,6 @@
 import { useContext, useState, useEffect, useRef } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Navigate } from "react-router-dom";
+import { isSessionValid } from "../utils/withAuth.jsx";
 import NexusLogo from "../../public/favicon.svg";
 import AuthContext from "../contexts/AuthContext.jsx";
 import "./Login.css";
@@ -141,6 +142,15 @@ export default function Authentication() {
       setLoading(false);
     }
   };
+
+  if (isSessionValid()) {
+    const savedRedirect = sessionStorage.getItem("postLoginRedirect");
+    if (savedRedirect) {
+      sessionStorage.removeItem("postLoginRedirect");
+      return <Navigate to={savedRedirect} replace />;
+    }
+    return <Navigate to="/home" replace />;
+  }
 
   return (
     <>

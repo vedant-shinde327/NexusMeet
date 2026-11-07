@@ -2,6 +2,11 @@ import axios, { HttpStatusCode } from "axios";
 import { createContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import server from "../environment.js";
+import {
+  setAuthSession,
+  clearAuthSession,
+  isSessionValid,
+} from "../utils/withAuth";
 
 const AuthContext = createContext({});
 
@@ -16,14 +21,17 @@ export const AuthProvider = ({ children }) => {
   // 1. Define getUserProfile FIRST so other functions can call it safely
   const getUserProfile = async () => {
     try {
+      if (!isSessionValid()) return null;
       const token = localStorage.getItem("token");
-      if (!token) return null;
       const response = await client.get("/get_user_profile", {
         params: { token },
       });
       return response.data;
-    } catch (error) {
-      console.error("Failed to fetch profile:", error);
+    } catch (e) {
+      if (e.response?.status === 401 || e.response?.status === 404) {
+        clearAuthSession();
+      }
+      console.error("Failed to fetch profile:", e);
       return null;
     }
   };
@@ -65,10 +73,11 @@ const handleLogin = async (username, password) => {
       password,
     });
 
-    if (request.status === HttpStatusCode.Ok) {
-      localStorage.setItem("token", request.data.token);
+    if (request.status === HttpStatusCode.Ok && request.data.token) {
+      setAuthSession(request.data.token, request.data.name);
+
       if (request.data.name) {
-        localStorage.setItem("userName", request.data.name);
+        
         setUserData({
           name: request.data.name,
           username: request.data.username || username,
@@ -80,7 +89,7 @@ const handleLogin = async (username, password) => {
           setUserData(profile);
         }
       }
-      navigate(consumePostLoginRedirect());
+      navigate(consumePostLoginRedirect(), {replace: true});
     }
     return request.data;
   } catch (error) {
@@ -96,9 +105,10 @@ const handleGoogleLogin = async (credential) => {
     });
 
     if (request.status === HttpStatusCode.Ok && request.data.token) {
-      localStorage.setItem("token", request.data.token);
+      setAuthSession(request.data.token, request.data.name);
+
       if (request.data.name) {
-        localStorage.setItem("userName", request.data.name);
+        
         setUserData({
           name: request.data.name,
           username: request.data.username,
@@ -110,7 +120,7 @@ const handleGoogleLogin = async (credential) => {
           setUserData(profile);
         }
       }
-      navigate(consumePostLoginRedirect());
+      navigate(consumePostLoginRedirect(), {replace: true});
     }
     return request.data;
   } catch (error) {
