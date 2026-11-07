@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { isSessionValid } from "../utils/withAuth";
 import Logo1 from "../../public/favicon.svg";
@@ -12,21 +11,6 @@ import CallEndOutlinedIcon from "@mui/icons-material/CallEnd";
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const [guestCode, setGuestCode] = useState("");
-  const [showGuestModal, setShowGuestModal] = useState(false);
-
-  const handleGuestJoin = (e) => {
-    e.preventDefault();
-    const trimmed = guestCode.trim();
-    if (trimmed) {
-      navigate(`/meeting/${trimmed}`);
-    }
-  };
-
-  const handleInstantGuestRoom = () => {
-    const randomCode = Math.random().toString(36).substring(2, 10);
-    navigate(`/meeting/${randomCode}`, { state: { isNewMeeting: true } });
-  };
 
   if (isSessionValid()) {
     return <Navigate to="/home" replace />;
@@ -44,13 +28,6 @@ export default function LandingPage() {
         </div>
 
         <nav className="landing-nav-actions">
-          <button
-            type="button"
-            className="landing-nav-link"
-            onClick={() => setShowGuestModal(true)}
-          >
-            Join as Guest
-          </button>
           <button
             type="button"
             className="landing-nav-link"
@@ -94,23 +71,6 @@ export default function LandingPage() {
             >
               Get Started Free
             </button>
-
-            <form className="landing-quick-join" onSubmit={handleGuestJoin}>
-              <input
-                type="text"
-                placeholder="Enter meeting code..."
-                value={guestCode}
-                onChange={(e) => setGuestCode(e.target.value)}
-                className="landing-code-input"
-              />
-              <button
-                type="submit"
-                disabled={!guestCode.trim()}
-                className="landing-btn-secondary"
-              >
-                Join
-              </button>
-            </form>
           </div>
 
           <div className="landing-features-row">
@@ -190,61 +150,6 @@ export default function LandingPage() {
           </div>
         </div>
       </main>
-
-      {/* Guest Join Modal */}
-      {showGuestModal && (
-        <div
-          className="landing-modal-overlay"
-          onClick={() => setShowGuestModal(false)}
-        >
-          <div
-            className="landing-modal-card"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="landing-modal-header">
-              <h3>Join as Guest</h3>
-              <button
-                type="button"
-                className="landing-modal-close"
-                onClick={() => setShowGuestModal(false)}
-              >
-                ×
-              </button>
-            </div>
-            <p className="landing-modal-desc">
-              Enter an existing meeting code or start an instant guest room
-              without signing in.
-            </p>
-            <form onSubmit={handleGuestJoin} className="landing-modal-form">
-              <input
-                type="text"
-                placeholder="e.g. a8f9k2m1x0"
-                value={guestCode}
-                onChange={(e) => setGuestCode(e.target.value)}
-                autoFocus
-                className="landing-code-input"
-              />
-              <button
-                type="submit"
-                disabled={!guestCode.trim()}
-                className="landing-btn-primary"
-              >
-                Join Room
-              </button>
-            </form>
-            <div className="landing-modal-divider">
-              <span>or</span>
-            </div>
-            <button
-              type="button"
-              className="landing-btn-secondary landing-full-width"
-              onClick={handleInstantGuestRoom}
-            >
-              Start Instant Guest Meeting
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

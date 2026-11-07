@@ -408,7 +408,7 @@ function Home() {
             </div>
 
             <h1 className="dashboard-title">
-              Low-latency video rooms with shareable meeting links.
+              Providing Quality Video Call Just Like Quality Education.
             </h1>
 
             <p className="subTitle">
