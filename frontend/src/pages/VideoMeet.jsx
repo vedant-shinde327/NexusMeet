@@ -210,7 +210,7 @@ function RemoteVideoTile({
               ? "fit-contain"
               : "fit-cover"
             : ""
-        }`}
+        } ${!isPresenting ? "mirror-video" : ""}`}
       />
 
       {!showVideo && (
@@ -1383,7 +1383,9 @@ export default function VideoMeetComponent() {
               autoPlay
               muted
               playsInline
-              className={`vm-lobby-video ${!video ? "video-hidden" : ""}`}
+              className={`vm-lobby-video mirror-video ${
+                !video ? "video-hidden" : ""
+              }`}
             />
             {!video && (
               <div className="vm-lobby-avatar">

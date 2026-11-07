@@ -1258,14 +1258,14 @@
   background: #07080a;
 }
 
-.vm-video-element.mirror-video {
+.vm-video-element.mirror-video,
+.vm-lobby-video.mirror-video {
   transform: scaleX(-1);
 }
 
 /* When pinned or sharing screen, Fit mode prevents any edge cropping */
 .vm-video-element.fit-contain {
   object-fit: contain !important;
-  transform: none !important;
   background: #050608;
 }
 
