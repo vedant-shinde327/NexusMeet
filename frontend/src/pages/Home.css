@@ -168,9 +168,12 @@
 }
 
 .dashboard-native-input {
-  flex: 1;
+  flex: 1 1 220px;
+  width: 100%;
+  min-width: 0;
   height: 44px;
   padding: 0 12px;
+  box-sizing: border-box;
   border-radius: 8px;
   border: 1px solid var(--border-default, rgba(255, 255, 255, 0.11));
   background: var(--bg-canvas, #0b0c0e);
@@ -178,8 +181,13 @@
   font-size: 0.875rem;
   font-family: var(--font-mono, monospace);
   font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
   outline: none;
   transition: border-color var(--ease-out), background-color var(--ease-out);
+}
+
+.dashboard-native-input:focus {
+  border-color: rgba(16, 185, 129, 0.55);
 }
 
 .dashboard-native-input::placeholder {
@@ -1311,6 +1319,15 @@
   .scheduled-row-actions {
     width: 100%;
     justify-content: flex-end;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-native-input {
+    flex: 1 1 100%;
+    width: 100%;
+    min-height: 46px;
+    font-size: 1rem; /* Prevents mobile browser auto-zoom on focus */
   }
 }
 
